@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>Quản Lý Nội Dung Đọc Thử</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+
+        /* TOP NAV */
+        .top-bar {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 0.9rem 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+        }
+        .brand { color: #fff; font-weight: 700; font-size: 1.15rem; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .brand i { color: #818cf8; }
+        .btn-nav { background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.15);
+                   border-radius: 10px; padding: 6px 16px; text-decoration: none; font-size: 0.88rem; transition: all 0.2s; }
+        .btn-nav:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+        /* PAGE HEADER */
+        .page-header { padding: 1.8rem 0 0.8rem; }
+        .page-header h1 { font-size: 1.6rem; font-weight: 800; }
+        .page-header .book-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #bae6fd; border-radius: 12px;
+            padding: 6px 16px; font-size: 0.9rem; color: #0369a1; font-weight: 600;
+        }
+
+        /* PROGRESS BAR 10 TRANG */
+        .pages-track {
+            display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem;
+        }
+        .page-chip {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.85rem; cursor: pointer;
+            transition: all 0.2s; border: 2px solid transparent;
+            position: relative; text-decoration: none;
+        }
+        .page-chip .chip-num { font-size: 1rem; font-weight: 800; line-height: 1; }
+        .page-chip .chip-label { font-size: 0.6rem; font-weight: 500; line-height: 1; margin-top: 2px; }
+        .page-chip.empty {
+            background: #f8fafc; border-color: var(--border); color: var(--muted);
+        }
+        .page-chip.empty:hover { border-color: var(--primary); color: var(--primary); background: #f0f0ff; transform: translateY(-2px); }
+        .page-chip.has-text {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-color: #93c5fd; color: #1d4ed8;
+        }
+        .page-chip.has-image {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            border-color: #6ee7b7; color: #065f46;
+        }
+        .page-chip.active-chip {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.25);
+            transform: translateY(-3px) scale(1.05);
+        }
+        .page-chip .dot-indicator {
+            position: absolute; top: -4px; right: -4px;
+            width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff;
+        }
+        .dot-text { background: #3b82f6; }
+        .dot-image { background: #10b981; }
+
+        /* EDITOR CARD */
+        .editor-card {
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .editor-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 1.1rem 1.6rem; color: #fff;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .editor-header h5 { margin: 0; font-weight: 700; font-size: 1rem; }
+        .page-indicator {
+            background: rgba(255,255,255,0.2); border-radius: 8px;
+            padding: 4px 12px; font-size: 0.85rem; font-weight: 700;
+        }
+        .editor-body { padding: 1.6rem; }
+
+        /* OVERWRITE WARNING BANNER */
+        .overwrite-banner {
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            border: 2px solid #fed7aa; border-radius: 14px;
+            padding: 1rem 1.2rem; margin-bottom: 1.2rem;
+            display: none;
+        }
+        .overwrite-banner .banner-title { font-weight: 700; color: #c2410c; font-size: 0.9rem; }
+        .overwrite-banner .banner-sub { font-size: 0.82rem; color: #9a3412; margin-top: 3px; }
+
+        /* TYPE TOGGLE */
+        .type-toggle { display: flex; gap: 10px; margin-bottom: 1.2rem; }
+        .type-btn {
+            flex: 1; padding: 12px; border-radius: 12px;
+            border: 2px solid var(--border); background: #f8fafc;
+            cursor: pointer; text-align: center; transition: all 0.2s;
+            font-weight: 600; font-size: 0.88rem;
+        }
+        .type-btn:hover { border-color: var(--primary); }
+        .type-btn.active-text { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+        .type-btn.active-image { border-color: #10b981; background: #f0fdf4; color: #065f46; }
+
+        /* TEXTAREA */
+        .content-textarea {
+            width: 100%; padding: 12px 14px;
+            border: 2px solid var(--border); border-radius: 12px;
+            font-size: 0.92rem; resize: vertical; min-height: 200px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .content-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); outline: none; }
+
+        /* FILE UPLOAD ZONE */
+        .upload-zone {
+            border: 2px dashed #a5b4fc; border-radius: 14px;
+            background: #f5f3ff; padding: 2rem;
+            text-align: center; cursor: pointer;
+            transition: all 0.2s; position: relative;
+        }
+        .upload-zone:hover { border-color: var(--primary); background: #ede9fe; }
+        .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .upload-zone .upload-icon { font-size: 2.5rem; color: #818cf8; margin-bottom: 0.5rem; }
+        .upload-preview { max-width: 100%; max-height: 200px; border-radius: 10px; margin-top: 1rem; object-fit: contain; display: none; }
+
+        /* SAVE BUTTON */
+        .btn-save {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff; border: none; border-radius: 14px;
+            padding: 14px 32px; font-size: 1rem; font-weight: 700;
+            width: 100%; margin-top: 1rem; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(16,185,129,0.3);
+            transition: all 0.3s;
+        }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16,185,129,0.4); }
+        .btn-save:active { transform: translateY(0); }
+
+        /* PAGE LIST */
+        .list-card {
+            background: var(--surface); border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .list-header {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            padding: 1rem 1.4rem; color: #fff;
+        }
+        .list-header h5 { margin: 0; font-weight: 700; font-size: 0.95rem; }
+        .page-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 0.85rem 1.2rem; border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+        .page-row:hover { background: #f8fafc; }
+        .page-row:last-child { border-bottom: none; }
+        .page-num-badge {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.9rem; flex-shrink: 0;
+        }
+        .pnb-text { background: #dbeafe; color: #1d4ed8; }
+        .pnb-image { background: #d1fae5; color: #065f46; }
+        .page-content-preview { flex: 1; }
+        .page-content-preview .type-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .page-content-preview .preview-snippet { font-size: 0.82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        .page-thumbnail { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+        .btn-delete-page {
+            background: #fef2f2; color: #dc2626; border: none; border-radius: 8px;
+            width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+        .btn-delete-page:hover { background: #fee2e2; }
+        .btn-edit-page {
+            background: #f0f9ff; color: #0369a1; border: none; border-radius: 8px;
+            width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+            font-size: 0.85rem; text-decoration: none;
+        }
+        .btn-edit-page:hover { background: #e0f2fe; color: #075985; }
+        .empty-hint { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+
+        /* CONFIRM MODAL */
+        .modal-confirm .modal-content { border-radius: 20px; border: none; overflow: hidden; }
+        .modal-confirm .modal-header-custom {
+            background: linear-gradient(135deg, #c2410c, #ea580c);
+            padding: 1.5rem 1.8rem; text-align: center;
+        }
+        .modal-confirm .modal-header-custom h5 { color: #fff; font-weight: 800; margin: 0; }
+
+        /* FLASH MESSAGE */
+        .flash-success {
+            background: #f0fdf4; border: 1px solid #86efac; border-radius: 14px;
+            padding: 0.9rem 1.2rem; color: #166534; font-weight: 600; font-size: 0.9rem;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;
+        }
+
+        /* Char counter */
+        .char-counter { font-size: 0.78rem; color: var(--muted); text-align: right; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="top-bar">
+    <a href="/admin/book" class="brand">
+        <i class="fas fa-layer-group"></i>
+        Quản Lý Thư Viện
+    </a>
+    <div class="d-flex gap-2">
+        <a href="/admin/book" class="btn-nav">
+            <i class="fas fa-arrow-left me-1"></i> Danh sách sách
+        </a>
+    </div>
+</div>
+
+<div class="container-lg py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <h1><i class="fas fa-book-open me-2" style="color: var(--primary);"></i>Quản Lý Nội Dung Đọc Thử</h1>
+        <div class="book-badge mt-2">
+            <i class="fas fa-book"></i>
+            <span th:text="${book.title}">Tên Sách</span>
+        </div>
+    </div>
+
+    <!-- FLASH MESSAGE -->
+    <div th:if="${message}" class="flash-success">
+        <i class="fas fa-check-circle fa-lg"></i>
+        <span th:text="${message}"></span>
+    </div>
+
+    <!-- TRACK 10 TRANG -->
+    <div class="pages-track" id="pagesTrack">
+        <!-- Render từ JS dựa trên dữ liệu Thymeleaf -->
+    </div>
+
+    <!-- Pass data to JS -->
+    <script th:inline="javascript">
+        const BOOK_ID = /*[[${book.bookId}]]*/ 0;
+        const SAMPLE_PAGES = /*[[${samplePages}]]*/ [];
+        // lấy currentPage từ flash attribute hoặc query param nếu có
+        const SAVED_PAGE = /*[[${savedPage}]]*/ null;
+    </script>
+
+    <div class="row g-4">
+        <!-- EDITOR COLUMN -->
+        <div class="col-lg-6">
+            <div class="editor-card">
+                <div class="editor-header">
+                    <h5><i class="fas fa-edit me-2"></i>Soạn Nội Dung</h5>
+                    <span class="page-indicator" id="activePageLabel">Trang 1</span>
+                </div>
+                <div class="editor-body">
+
+                    <!-- OVERWRITE WARNING BANNER -->
+                    <div class="overwrite-banner" id="overwriteBanner">
+                        <div class="banner-title">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Trang này đã có nội dung!
+                        </div>
+                        <div class="banner-sub" id="overwriteBannerSub">
+                            Trang đã lưu nội dung dạng văn bản. Lưu mới sẽ <strong>ghi đè</strong> hoàn toàn nội dung cũ.
+                        </div>
+                    </div>
+
+                    <form th:action="@{'/admin/book/' + ${book.bookId} + '/samples/save'}"
+                          method="post" enctype="multipart/form-data"
+                          id="sampleForm" onsubmit="return onFormSubmit(event)">
+
+                        <!-- Hidden: page number -->
+                        <input type="hidden" name="pageNumber" id="hiddenPageNumber" value="1">
+                        <!-- Hidden: after save, which page to auto-advance to -->
+                        <input type="hidden" name="nextPage" id="hiddenNextPage" value="2">
+
+                        <!-- TYPE TOGGLE -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-muted" style="font-size:0.82rem;text-transform:uppercase;letter-spacing:0.5px;">
+                                Loại nội dung
+                            </label>
+                            <div class="type-toggle">
+                                <div class="type-btn active-text" id="btnTypeText" onclick="selectType('text')">
+                                    <i class="fas fa-align-left me-2"></i>Văn bản chữ
+                                </div>
+                                <div class="type-btn" id="btnTypeImage" onclick="selectType('image')">
+                                    <i class="fas fa-image me-2"></i>Hình ảnh
+                                </div>
+                            </div>
+                            <input type="hidden" name="isImage" id="isImageHidden" value="false">
+                        </div>
+
+                        <!-- TEXT INPUT -->
+                        <div id="textGroup">
+                            <label class="form-label fw-semibold" style="font-size:0.88rem;">
+                                Nội dung văn bản <span style="color:var(--danger);">*</span>
+                            </label>
+                            <textarea class="content-textarea" name="contentText" id="textField"
+                                      placeholder="Nhập nội dung trích dẫn của trang sách này..."
+                                      oninput="updateCharCounter()"></textarea>
+                            <div class="char-counter"><span id="charCount">0</span> ký tự</div>
+                        </div>
+
+                        <!-- IMAGE INPUT -->
+                        <div id="imageGroup" class="d-none">
+                            <label class="form-label fw-semibold" style="font-size:0.88rem;">
+                                Tải lên hình ảnh trang sách
+                            </label>
+                            <div class="upload-zone" id="uploadZone">
+                                <input type="file" name="imageFile" id="imageField" accept="image/*"
+                                       onchange="handleImagePreview(this)">
+                                <div id="uploadZoneContent">
+                                    <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                                    <div class="fw-semibold" style="color:#6366f1;">Nhấn hoặc kéo thả ảnh vào đây</div>
+                                    <div style="font-size:0.82rem;color:var(--muted);margin-top:4px;">PNG, JPG, WEBP — Tối đa 10MB</div>
+                                </div>
+                                <img id="uploadPreview" class="upload-preview" alt="Preview">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-save" id="saveBtn">
+                            <i class="fas fa-save me-2"></i>LƯU VÀ SANG TRANG TIẾP THEO
+                        </button>
+
+                        <div class="text-center mt-2" style="font-size:0.8rem;color:var(--muted);">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Sau khi lưu sẽ tự động chuyển sang trang kế tiếp chưa có nội dung.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- LIST COLUMN -->
+        <div class="col-lg-6">
+            <div class="list-card">
+                <div class="list-header">
+                    <h5><i class="fas fa-list me-2"></i>Danh Sách Trang Đã Lưu
+                        <span id="savedCount" class="ms-2" style="font-size:0.8rem;opacity:0.75;font-weight:400;">(0/10 trang)</span>
+                    </h5>
+                </div>
+                <div id="pageListContainer">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- TIPS -->
+            <div class="mt-3 p-3 rounded-3" style="background:#fafafa;border:1px solid var(--border);font-size:0.82rem;color:var(--muted);">
+                <div class="fw-bold mb-1" style="color:var(--text);"><i class="fas fa-lightbulb text-warning me-1"></i>Hướng dẫn</div>
+                <ul class="mb-0 ps-3" style="line-height:1.8;">
+                    <li>Nhấp vào chip trang ở trên để chuyển sang chỉnh sửa trang đó.</li>
+                    <li>Trang <span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:0.75rem;font-weight:600;">Văn bản</span> và <span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:4px;font-size:0.75rem;font-weight:600;">Hình ảnh</span> hiển thị màu khác nhau.</li>
+                    <li>Khi sửa trang đã có nội dung, hệ thống sẽ cảnh báo trước khi ghi đè.</li>
+                    <li>Tối đa <strong>10 trang</strong> đọc thử, hỗ trợ cả văn bản và hình ảnh.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OVERWRITE CONFIRM MODAL -->
+<div class="modal fade modal-confirm" id="confirmOverwriteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header-custom">
+                <div style="width:64px;height:64px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.8rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:1.8rem;color:#fff;"></i>
+                </div>
+                <h5>Xác Nhận Ghi Đè?</h5>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p id="confirmModalMsg" style="font-size:0.95rem;color:#7f1d1d;font-weight:600;margin-bottom:1.5rem;"></p>
+                <div class="d-flex gap-3 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                            data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left me-1"></i>Hủy, quay lại
+                    </button>
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold"
+                            id="confirmOverwriteBtn">
+                        <i class="fas fa-pen me-1"></i>Xác nhận ghi đè
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== DELETE PAGE CONFIRM MODAL ===== -->
+<div class="modal fade" id="deletePageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content" style="border-radius:20px;border:none;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
+            <div style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:2rem;text-align:center;">
+                <div style="width:72px;height:72px;background:rgba(255,255,255,0.18);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.8rem;">
+                    <i class="fas fa-trash-alt" style="font-size:2rem;color:#fff;"></i>
+                </div>
+                <h5 style="color:#fff;font-weight:800;margin:0;font-size:1.15rem;">Xóa Trang Đọc Thử?</h5>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p style="color:#374151;font-size:0.95rem;margin-bottom:0.3rem;">Bạn sắp xóa:</p>
+                <div id="deletePageLabel" style="display:inline-block;background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;border-radius:10px;padding:6px 18px;font-weight:700;font-size:0.95rem;margin:0.4rem 0 1rem;">—</div>
+                <p style="color:#6b7280;font-size:0.87rem;margin-bottom:1.5rem;">
+                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                    Hành động này <strong>không thể hoàn tác</strong>. Nội dung trang sẽ bị xóa vĩnh viễn.
+                </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" style="background:#f9fafb;color:#374151;border:1px solid #e5e7eb;border-radius:12px;padding:10px 24px;font-weight:600;font-size:0.9rem;cursor:pointer;" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left me-1"></i>Hủy bỏ
+                    </button>
+                    <button type="button" id="confirmDeletePageBtn" style="background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:12px;padding:10px 28px;font-weight:700;font-size:0.9rem;cursor:pointer;box-shadow:0 4px 14px rgba(220,38,38,0.3);">
+                        <i class="fas fa-trash me-1"></i>Xóa trang này
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form ẩn POST xóa trang (có CSRF) -->
+<form id="deletePageForm" method="post" style="display:none;">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+</form>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ================================================================
+//  STATE
+// ================================================================
+let currentPage = 1;
+let pendingSubmit = false; // true khi user đã xác nhận modal
+
+// Build map: pageNumber -> page object
+function buildPageMap() {
+    const map = {};
+    (SAMPLE_PAGES || []).forEach(p => { map[p.pageNumber] = p; });
+    return map;
+}
+let pageMap = buildPageMap();
+
+// ================================================================
+//  RENDER CHIP TRACK
+// ================================================================
+function renderTrack() {
+    const track = document.getElementById('pagesTrack');
+    track.innerHTML = '';
+    for (let i = 1; i <= 10; i++) {
+        const page = pageMap[i];
+        let chipClass = 'empty';
+        let dotHtml = '';
+        let labelHtml = '<span class="chip-label">Trống</span>';
+        if (page) {
+            if (page.isImage) {
+                chipClass = 'has-image';
+                dotHtml = '<span class="dot-indicator dot-image"></span>';
+                labelHtml = '<span class="chip-label">Ảnh</span>';
+            } else {
+                chipClass = 'has-text';
+                dotHtml = '<span class="dot-indicator dot-text"></span>';
+                labelHtml = '<span class="chip-label">Chữ</span>';
+            }
+        }
+        const active = (i === currentPage) ? 'active-chip' : '';
+        const chip = document.createElement('div');
+        chip.className = `page-chip ${chipClass} ${active}`;
+        chip.title = page ? `Trang ${i} — ${page.isImage ? 'Hình ảnh' : 'Văn bản'}` : `Trang ${i} — Chưa có nội dung`;
+        chip.innerHTML = `${dotHtml}<span class="chip-num">${i}</span>${labelHtml}`;
+        chip.addEventListener('click', () => switchToPage(i));
+        track.appendChild(chip);
+    }
+}
+
+// ================================================================
+//  RENDER PAGE LIST
+// ================================================================
+function renderPageList() {
+    const container = document.getElementById('pageListContainer');
+    const pages = Object.values(pageMap).sort((a, b) => a.pageNumber - b.pageNumber);
+    const count = pages.length;
+    document.getElementById('savedCount').textContent = `(${count}/10 trang)`;
+
+    if (count === 0) {
+        container.innerHTML = '<div class="empty-hint"><i class="fas fa-inbox fa-2x mb-2" style="opacity:0.3;"></i><br>Chưa có trang nào được lưu.<br>Bắt đầu bằng cách soạn nội dung bên trái!</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    pages.forEach(page => {
+        const row = document.createElement('div');
+        row.className = 'page-row';
+        row.id = `page-row-${page.pageNumber}`;
+
+        const badgeClass = page.isImage ? 'pnb-image' : 'pnb-text';
+        const typeLabel = page.isImage
+            ? '<span class="type-label" style="color:#065f46;">📸 Hình ảnh</span>'
+            : '<span class="type-label" style="color:#1d4ed8;">📝 Văn bản</span>';
+
+        let previewHtml = '';
+        if (page.isImage) {
+            previewHtml = `<img src="${page.content}" class="page-thumbnail" alt="Trang ${page.pageNumber}" onerror="this.style.display='none'">`;
+        } else {
+            const snippet = (page.content || '').substring(0, 60) + ((page.content || '').length > 60 ? '…' : '');
+            previewHtml = `<div class="preview-snippet" title="${(page.content || '').replace(/"/g,'&quot;')}">${snippet}</div>`;
+        }
+
+        row.innerHTML = `
+            <div class="page-num-badge ${badgeClass}">${page.pageNumber}</div>
+            <div class="page-content-preview">
+                ${typeLabel}
+                ${previewHtml}
+            </div>
+            <button class="btn-edit-page" title="Sửa trang ${page.pageNumber}" onclick="switchToPage(${page.pageNumber})">
+                <i class="fas fa-pen"></i>
+            </button>
+            <button type="button" class="btn-delete-page" title="Xóa trang ${page.pageNumber}"
+                    data-page-num="${page.pageNumber}"
+                    data-page-id="${page.pageId}"
+                    onclick="openDeletePageModal(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        container.appendChild(row);
+    });
+}
+
+// ================================================================
+//  SWITCH PAGE
+// ================================================================
+function switchToPage(n) {
+    currentPage = n;
+    document.getElementById('hiddenPageNumber').value = n;
+
+    // Tính nextPage: trang nhỏ nhất > n chưa có nội dung, hoặc trang < n, hoặc n+1
+    const next = findNextEmptyPage(n);
+    document.getElementById('hiddenNextPage').value = next;
+
+    document.getElementById('activePageLabel').textContent = `Trang ${n}`;
+    document.getElementById('saveBtn').innerHTML = next <= 10
+        ? `<i class="fas fa-save me-2"></i>LƯU & SANG TRANG ${next}`
+        : `<i class="fas fa-save me-2"></i>LƯU TRANG ${n}`;
+
+    renderTrack();
+    updateOverwriteBanner();
+
+    // Nếu trang đã có nội dung, điền sẵn loại (không điền nội dung cũ vì ảnh không thể điền lại)
+    const existing = pageMap[n];
+    if (existing) {
+        if (!existing.isImage) {
+            selectType('text');
+            document.getElementById('textField').value = existing.content || '';
+        } else {
+            selectType('image');
+        }
+    } else {
+        // reset form
+        document.getElementById('textField').value = '';
+        selectType('text');
+    }
+    updateCharCounter();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function findNextEmptyPage(from) {
+    // tìm trang trống tiếp theo sau "from"
+    for (let i = from + 1; i <= 10; i++) {
+        if (!pageMap[i]) return i;
+    }
+    // không có trang trống sau, trả về from+1 (có thể = 11 nếu đã đủ)
+    return from + 1;
+}
+
+// ================================================================
+//  OVERWRITE BANNER
+// ================================================================
+function updateOverwriteBanner() {
+    const banner = document.getElementById('overwriteBanner');
+    const sub = document.getElementById('overwriteBannerSub');
+    const existing = pageMap[currentPage];
+    if (existing) {
+        const type = existing.isImage ? 'hình ảnh' : 'văn bản';
+        sub.innerHTML = `Trang ${currentPage} đã có nội dung dạng <strong>${type}</strong>. Lưu mới sẽ <strong>ghi đè</strong> hoàn toàn nội dung cũ.`;
+        banner.style.display = 'block';
+    } else {
+        banner.style.display = 'none';
+    }
+}
+
+// ================================================================
+//  TYPE TOGGLE
+// ================================================================
+function selectType(type) {
+    const isImage = type === 'image';
+    document.getElementById('isImageHidden').value = isImage ? 'true' : 'false';
+
+    const btnText = document.getElementById('btnTypeText');
+    const btnImage = document.getElementById('btnTypeImage');
+    const textGroup = document.getElementById('textGroup');
+    const imageGroup = document.getElementById('imageGroup');
+    const textField = document.getElementById('textField');
+    const imageField = document.getElementById('imageField');
+
+    if (isImage) {
+        btnText.className = 'type-btn';
+        btnImage.className = 'type-btn active-image';
+        textGroup.classList.add('d-none');
+        textField.removeAttribute('required');
+        imageGroup.classList.remove('d-none');
+        imageField.setAttribute('required', 'required');
+    } else {
+        btnText.className = 'type-btn active-text';
+        btnImage.className = 'type-btn';
+        textGroup.classList.remove('d-none');
+        textField.setAttribute('required', 'required');
+        imageGroup.classList.add('d-none');
+        imageField.removeAttribute('required');
+    }
+}
+
+// ================================================================
+//  IMAGE PREVIEW
+// ================================================================
+function handleImagePreview(input) {
+    const preview = document.getElementById('uploadPreview');
+    const zoneContent = document.getElementById('uploadZoneContent');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            zoneContent.style.display = 'none';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// ================================================================
+//  CHAR COUNTER
+// ================================================================
+function updateCharCounter() {
+    const len = (document.getElementById('textField').value || '').length;
+    document.getElementById('charCount').textContent = len;
+}
+
+// ================================================================
+//  FORM SUBMIT — kiểm tra ghi đè
+// ================================================================
+function onFormSubmit(e) {
+    const existing = pageMap[currentPage];
+    if (existing && !pendingSubmit) {
+        e.preventDefault();
+        const type = existing.isImage ? 'hình ảnh' : 'văn bản';
+        document.getElementById('confirmModalMsg').textContent =
+            `Trang ${currentPage} đã lưu nội dung dạng ${type}. Bạn có chắc muốn ghi đè không?`;
+        const modal = new bootstrap.Modal(document.getElementById('confirmOverwriteModal'));
+        modal.show();
+
+        document.getElementById('confirmOverwriteBtn').onclick = function() {
+            modal.hide();
+            pendingSubmit = true;
+            document.getElementById('sampleForm').submit();
+        };
+        return false;
+    }
+    pendingSubmit = false;
+    return true;
+}
+
+// ================================================================
+//  INIT
+// ================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Xác định trang bắt đầu: ưu tiên trang trống đầu tiên
+    let startPage = 1;
+    if (SAVED_PAGE) {
+        // Sau khi lưu, server redirect với flash "savedPage" → auto-advance
+        startPage = parseInt(SAVED_PAGE) || 1;
+    } else {
+        // Tìm trang trống đầu tiên
+        for (let i = 1; i <= 10; i++) {
+            if (!pageMap[i]) { startPage = i; break; }
+        }
+        if (!startPage) startPage = 1;
+    }
+
+    renderTrack();
+    renderPageList();
+    switchToPage(startPage);
+});
+// ================================================================
+//  DELETE PAGE MODAL
+// ================================================================
+let _deletePageModal;
+function openDeletePageModal(btn) {
+    const pageNum  = btn.getAttribute('data-page-num');
+    const pageId   = btn.getAttribute('data-page-id');
+    const page     = pageMap[parseInt(pageNum)];
+    const typeText = page ? (page.isImage ? 'hình ảnh' : 'văn bản') : '';
+
+    document.getElementById('deletePageLabel').textContent =
+        `Trang ${pageNum}${typeText ? ' — ' + typeText : ''}`;
+
+    const action = `/admin/book/samples/delete/${pageId}/${BOOK_ID}`;
+    document.getElementById('deletePageForm').action = action;
+
+    document.getElementById('confirmDeletePageBtn').onclick = function() {
+        document.getElementById('deletePageForm').submit();
+    };
+
+    if (!_deletePageModal) {
+        _deletePageModal = new bootstrap.Modal(document.getElementById('deletePageModal'));
+    }
+    _deletePageModal.show();
+}
+</script>
+</body>
+</html>

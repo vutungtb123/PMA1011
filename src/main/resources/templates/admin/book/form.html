@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${book.bookId != null ? 'Chỉnh Sửa Đầu Sách' : 'Tạo Đầu Sách Mới'}">Thêm / Sửa Sách</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+
+        /* FORM CARD */
+        .form-card {
+            background: #fff; border-radius: 20px; border: none;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.07); overflow: hidden;
+        }
+        .form-card-header {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            padding: 1.4rem 1.8rem; color: #fff;
+        }
+        .form-card-header h4 { margin: 0; font-weight: 800; font-size: 1.05rem; }
+        .form-card-header p  { margin: 0.3rem 0 0; font-size: 0.82rem; opacity: 0.85; }
+        .form-body { padding: 1.8rem; }
+
+        /* INPUTS */
+        .form-label-custom { font-weight: 600; font-size: 0.82rem; color: #64748b;
+                             text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .form-control { border: 2px solid #e2e8f0; border-radius: 12px;
+                        padding: 10px 14px; font-family: 'Inter', sans-serif;
+                        font-size: 0.92rem; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-control:focus { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+        .form-check-input:checked { background-color: #6366f1; border-color: #6366f1; }
+
+        /* CATEGORY CHIPS */
+        .cat-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 20px;
+            border: 2px solid #e2e8f0; cursor: pointer;
+            transition: all 0.2s; font-size: 0.85rem; font-weight: 500;
+            background: #f8fafc; color: #475569;
+        }
+        .cat-chip:has(input:checked) {
+            background: #ede9fe; border-color: #a5b4fc; color: #4f46e5;
+        }
+
+        /* COVER PREVIEW */
+        #coverPreviewBox {
+            width: 110px; height: 150px; border-radius: 12px;
+            border: 2px dashed #cbd5e1; display: flex; align-items: center;
+            justify-content: center; flex-direction: column; gap: 6px;
+            background: #f8fafc; color: #94a3b8; font-size: 0.8rem;
+            overflow: hidden; transition: border-color 0.2s;
+        }
+        #coverPreviewBox img { width: 100%; height: 100%; object-fit: cover; }
+        #coverPreviewBox.has-img { border: 2px solid #10b981; }
+
+        /* SUBMIT BTN */
+        .btn-submit {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #fff; border: none; border-radius: 14px;
+            padding: 13px 40px; font-weight: 700; font-size: 1rem;
+            box-shadow: 0 4px 14px rgba(16,185,129,0.3);
+            transition: all 0.25s; cursor: pointer;
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(16,185,129,0.4); color: #fff; }
+
+        /* TIP CARD */
+        .tip-card {
+            background: #fafafa; border-radius: 16px;
+            border: 1px solid #e2e8f0; padding: 1.2rem 1.4rem;
+        }
+        .tip-card .tip-title { font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 0.8rem; }
+        .tip-card ul { margin: 0; padding-left: 1.1rem; color: #64748b; font-size: 0.83rem; line-height: 1.9; }
+        .step-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%;
+            font-weight: 800; font-size: 0.72rem; margin-right: 4px;
+        }
+        .step-1 { background: #ede9fe; color: #4f46e5; }
+        .step-2 { background: #dcfce7; color: #15803d; }
+        .step-3 { background: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/admin/book"><i class="fas fa-book-open me-2"></i>Thư Viện Admin</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link active" href="/admin/book"><i class="fas fa-books me-1"></i>Sách</a>
+            <a class="nav-link" href="/admin/category"><i class="fas fa-tags me-1"></i>Danh Mục</a>
+            <a class="nav-link" href="/admin/warehouse"><i class="fas fa-warehouse me-1"></i>Kho</a>
+            <a class="nav-link" href="/admin/borrow"><i class="fas fa-hand-holding-heart me-1"></i>Mượn Sách</a>
+        </div>
+        <div class="navbar-nav ms-auto">
+            <form th:action="@{/logout}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-1"></i>Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container-lg py-5">
+    <div class="row g-4">
+
+        <!-- MAIN FORM -->
+        <div class="col-lg-8">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <h4>
+                        <i class="fas fa-book-open me-2"></i>
+                        <span th:text="${book.bookId != null ? 'Chỉnh Sửa Thông Tin Đầu Sách' : 'Tạo Đầu Sách Mới'}">Tạo Đầu Sách Mới</span>
+                    </h4>
+                    <p th:text="${book.bookId != null ? 'Cập nhật metadata của đầu sách trong catalogue.' : 'Điền thông tin metadata cho đầu sách. Chưa phải bước lên kệ.'}"></p>
+                </div>
+                <div class="form-body">
+                    <form th:action="@{/admin/book/save}" th:object="${book}" method="post" enctype="multipart/form-data">
+                        <input type="hidden" th:field="*{bookId}">
+                        <input type="hidden" th:field="*{coverImage}">
+
+                        <!-- CÁC TRƯỜNG THÔNG TIN -->
+                        <div class="mb-4">
+                            <label class="form-label-custom">Tiêu Đề Sách <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" th:field="*{title}"
+                                   placeholder="VD: Dế Mèn Phiêu Lưu Ký" required>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label-custom">Tác Giả</label>
+                                <input type="text" class="form-control" th:field="*{author}"
+                                       placeholder="VD: Tô Hoài">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label-custom">Nhà Xuất Bản</label>
+                                <input type="text" class="form-control" th:field="*{publisher}"
+                                       placeholder="VD: NXB Kim Đồng">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label-custom">Tóm Tắt Nội Dung</label>
+                            <textarea class="form-control" th:field="*{summary}" rows="4"
+                                      placeholder="Mô tả ngắn về nội dung và giá trị của cuốn sách..."></textarea>
+                        </div>
+
+                        <!-- ẢNH BÌA -->
+                        <div class="mb-4">
+                            <label class="form-label-custom">Ảnh Bìa Sách</label>
+                            <div class="d-flex gap-3 align-items-start">
+                                <div id="coverPreviewBox">
+                                    <th:block th:if="${book.coverImage != null}">
+                                        <img th:src="${book.coverImage}" id="coverPreviewImg" alt="Bìa sách">
+                                    </th:block>
+                                    <th:block th:if="${book.coverImage == null}">
+                                        <i class="fas fa-image fa-2x"></i>
+                                        <span>Chưa có ảnh</span>
+                                    </th:block>
+                                </div>
+                                <div class="flex-fill">
+                                    <input type="file" class="form-control" name="coverFile"
+                                           accept="image/*" id="coverFileInput">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Chọn file ảnh (JPG/PNG). Nếu không đổi ảnh, giữ nguyên.
+                                    </small>
+                                    <div th:if="${book.coverImage != null}" class="mt-2">
+                                        <span class="badge bg-light text-muted border">
+                                            <i class="fas fa-link me-1"></i><span th:text="${book.coverImage}"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DANH MỤC -->
+                        <div class="mb-5">
+                            <label class="form-label-custom">Danh Mục Sách</label>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                <label class="cat-chip" th:each="cat : ${categories}">
+                                    <input class="form-check-input m-0" type="checkbox"
+                                           name="categories"
+                                           th:value="${cat.categoryId}"
+                                           th:field="*{categories}">
+                                    <span th:text="${cat.categoryName}"></span>
+                                </label>
+                            </div>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="fas fa-info-circle me-1"></i>Có thể chọn nhiều danh mục cho một đầu sách.
+                            </small>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-3">
+                            <a href="/admin/book" class="btn btn-light border rounded-3 px-4 py-2 fw-600">
+                                <i class="fas fa-times me-1"></i>Hủy
+                            </a>
+                            <button type="submit" class="btn-submit">
+                                <i class="fas fa-save me-2"></i>
+                                <span th:text="${book.bookId != null ? 'CẬP NHẬT THÔNG TIN' : 'LƯU ĐẦU SÁCH'}">LƯU</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR: TIP CARD -->
+        <div class="col-lg-4">
+
+            <!-- Quy trình -->
+            <div class="tip-card mb-3">
+                <div class="tip-title"><i class="fas fa-route me-2" style="color:#6366f1;"></i>Quy Trình Bổ Sung Sách</div>
+                <div style="font-size:0.83rem; color:#475569; line-height:2;">
+                    <div class="mb-2">
+                        <span class="step-badge step-1">1</span>
+                        <strong>Tạo Đầu Sách</strong> — Bạn đang làm bước này.<br>
+                        <span class="ms-4 text-muted">Nhập metadata: tên, tác giả, ảnh bìa...</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="step-badge step-2">2</span>
+                        <strong>Tạo Phiếu Nhập Kho</strong><br>
+                        <span class="ms-4 text-muted">Khai báo số lượng mua về từ nhà cung cấp.</span>
+                    </div>
+                    <div>
+                        <span class="step-badge step-3">3</span>
+                        <strong>Đăng Ký Mã Vạch (Lên Kệ)</strong><br>
+                        <span class="ms-4 text-muted">Gắn barcode cho từng cuốn vật lý, đưa lên kệ.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hướng dẫn -->
+            <div class="tip-card mb-3">
+                <div class="tip-title"><i class="fas fa-lightbulb me-2" style="color:#f59e0b;"></i>Hướng Dẫn</div>
+                <ul>
+                    <li><strong>Tiêu đề</strong> là bắt buộc — đây là thông tin chính hiển thị với độc giả.</li>
+                    <li><strong>Ảnh bìa</strong> giúp độc giả nhận diện sách nhanh hơn trên trang tìm kiếm.</li>
+                    <li><strong>Danh mục</strong> giúp lọc và gợi ý sách liên quan cho người đọc.</li>
+                    <li>Sau khi lưu, đầu sách xuất hiện trong catalogue nhưng <strong>chưa có bản vật lý</strong> nào trên kệ.</li>
+                </ul>
+            </div>
+
+            <!-- Lưu ý quan trọng -->
+            <div class="p-3 rounded-3" style="background:#fef3c7; border:1px solid #fcd34d; font-size:0.82rem; color:#92400e;">
+                <div class="fw-bold mb-1"><i class="fas fa-exclamation-triangle me-1"></i>Lưu Ý</div>
+                Đầu sách và bản sao vật lý là <strong>hai khái niệm khác nhau</strong>.<br>
+                Một đầu sách có thể có 1 hoặc nhiều bản sao vật lý trên kệ. Quản lý bản sao ở trang <strong>"Lên Kệ &amp; Mã Vạch"</strong>.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Live preview ảnh bìa
+    document.getElementById('coverFileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const box = document.getElementById('coverPreviewBox');
+            box.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;" alt="Preview">`;
+            box.classList.add('has-img');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Nếu đã có ảnh, mark box
+    (function() {
+        const img = document.querySelector('#coverPreviewBox img');
+        if (img) document.getElementById('coverPreviewBox').classList.add('has-img');
+    })();
+</script>
+</body>
+</html>

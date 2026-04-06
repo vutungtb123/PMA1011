@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Xác nhận mã OTP">
+    <title>Xác Nhận OTP | Thư Viện Trường</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+
+        <!-- Logo -->
+        <div class="auth-logo">
+            <div class="auth-logo-icon">📚</div>
+            <div class="auth-logo-text">
+                <span class="auth-logo-name">Thư Viện Trường</span>
+                <span class="auth-logo-sub">School Library System</span>
+            </div>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step-item completed">
+                <div class="step-circle"><i class="fa-solid fa-check" style="font-size:13px;"></i></div>
+                <span class="step-label">Email</span>
+            </div>
+            <div class="step-item active">
+                <div class="step-circle">2</div>
+                <span class="step-label">Mã OTP</span>
+            </div>
+            <div class="step-item">
+                <div class="step-circle">3</div>
+                <span class="step-label">Mật khẩu mới</span>
+            </div>
+        </div>
+
+        <h1 class="auth-title">Nhập mã OTP</h1>
+        <p class="auth-subtitle">
+            Chúng tôi đã gửi mã 6 chữ số đến
+            <strong style="color: var(--primary-light);" th:text="${email}">email@truong.edu.vn</strong>.
+            Mã có hiệu lực trong <strong>5 phút</strong>.
+        </p>
+
+        <!-- Alert thông báo -->
+        <div th:if="${successMessage}" class="alert alert-success">
+            <i class="fa-solid fa-circle-check alert-icon"></i>
+            <span th:text="${successMessage}"></span>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-error">
+            <i class="fa-solid fa-circle-exclamation alert-icon"></i>
+            <span th:text="${errorMessage}"></span>
+        </div>
+
+        <form id="otp-form" method="post" th:action="@{/verify-otp}" th:object="${otpVerifyDto}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" th:field="*{email}" th:value="${email}"/>
+            <!-- Hidden input sẽ được fill bằng JS -->
+            <input type="hidden" id="otp-combined" th:field="*{otpCode}" name="otpCode"/>
+
+            <!-- 6 ô OTP -->
+            <div class="form-group">
+                <label class="form-label">Mã xác nhận OTP</label>
+                <div class="otp-inputs" id="otp-inputs">
+                    <input class="otp-input" type="text" inputmode="numeric" maxlength="1" id="otp-0" autocomplete="off">
+                    <input class="otp-input" type="text" inputmode="numeric" maxlength="1" id="otp-1" autocomplete="off">
+                    <input class="otp-input" type="text" inputmode="numeric" maxlength="1" id="otp-2" autocomplete="off">
+                    <input class="otp-input" type="text" inputmode="numeric" maxlength="1" id="otp-3" autocomplete="off">
+                    <input class="otp-input" type="text" inputmode="numeric" maxlength="1" id="otp-4" autocomplete="off">
+                    <input class="otp-input" type="text" inputmode="numeric" maxlength="1" id="otp-5" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Bộ đếm thời gian -->
+            <div class="otp-timer">
+                <span>Mã hết hạn trong: </span>
+                <span class="timer-count" id="timer">05:00</span>
+                &nbsp;|&nbsp;
+                <button type="button" class="otp-resend-btn" id="resend-btn"
+                        onclick="window.location.href='/forgot-password'">Gửi lại mã</button>
+            </div>
+
+            <button type="submit" class="btn-primary" id="verify-btn" style="margin-top: 24px;">
+                <span>Xác nhận</span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p><a th:href="@{/forgot-password}" class="btn-link">← Nhập lại email khác</a></p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ── OTP Input auto-advance ──────────────────────────────
+    const otpInputs = document.querySelectorAll('.otp-input');
+    const combined = document.getElementById('otp-combined');
+
+    function syncCombined() {
+        combined.value = Array.from(otpInputs).map(i => i.value).join('');
+    }
+
+    otpInputs.forEach((input, idx) => {
+        input.addEventListener('input', (e) => {
+            const val = e.target.value.replace(/\D/g, '');
+            input.value = val.slice(-1);
+            if (val && idx < otpInputs.length - 1) {
+                otpInputs[idx + 1].focus();
+            }
+            input.classList.toggle('filled', !!input.value);
+            syncCombined();
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !input.value && idx > 0) {
+                otpInputs[idx - 1].focus();
+                otpInputs[idx - 1].value = '';
+                otpInputs[idx - 1].classList.remove('filled');
+                syncCombined();
+            }
+        });
+
+        input.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+            text.split('').slice(0, 6).forEach((ch, i) => {
+                if (otpInputs[i]) {
+                    otpInputs[i].value = ch;
+                    otpInputs[i].classList.add('filled');
+                }
+            });
+            syncCombined();
+            const next = Math.min(text.length, 5);
+            otpInputs[next].focus();
+        });
+    });
+
+    // Focus ô đầu khi tải trang
+    otpInputs[0].focus();
+
+    // Validate trước submit
+    document.getElementById('otp-form').addEventListener('submit', (e) => {
+        syncCombined();
+        if (combined.value.length !== 6) {
+            e.preventDefault();
+            alert('Vui lòng nhập đủ 6 chữ số OTP.');
+        }
+    });
+
+    // ── Countdown timer 5 phút ─────────────────────────────
+    let totalSeconds = 5 * 60;
+    const timerEl = document.getElementById('timer');
+    const resendBtn = document.getElementById('resend-btn');
+
+    const countdown = setInterval(() => {
+        totalSeconds--;
+        const m = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+        const s = String(totalSeconds % 60).padStart(2, '0');
+        timerEl.textContent = m + ':' + s;
+
+        if (totalSeconds <= 60) timerEl.style.color = '#EF4444';
+
+        if (totalSeconds <= 0) {
+            clearInterval(countdown);
+            timerEl.textContent = '00:00';
+            resendBtn.classList.add('visible');
+        }
+    }, 1000);
+</script>
+</body>
+</html>

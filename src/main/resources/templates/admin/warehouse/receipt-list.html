@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Phiếu Nhập Kho</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+
+        .main-card {
+            background: #fff; border-radius: 20px; border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06); overflow: hidden;
+        }
+        .card-top {
+            padding: 1rem 1.4rem; border-bottom: 1px solid #e2e8f0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .card-top h5 { margin: 0; font-weight: 700; }
+
+        /* TABLE */
+        .receipt-table { margin: 0; }
+        .receipt-table thead th {
+            background: #f8fafc; color: #64748b;
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; padding: 10px 14px; border-bottom: 2px solid #e2e8f0;
+        }
+        .receipt-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+        .receipt-table tbody tr:hover { background: #f8fafc; }
+        .receipt-table td { padding: 13px 14px; vertical-align: middle; font-size: 0.88rem; }
+
+        .receipt-id { font-weight: 700; color: #4f46e5; font-family: monospace; font-size: 1rem; }
+
+        .match-val { color: #059669; font-weight: 700; }
+        .mismatch-val { color: #dc2626; font-weight: 700; }
+
+        /* STAT PILLS */
+        .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;
+        }
+        .pill-total  { background: #ede9fe; color: #4f46e5; }
+        .pill-info   { background: #e0f2fe; color: #0369a1; }
+
+        /* INFO BANNER */
+        .info-banner {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1px solid #fcd34d; border-radius: 14px;
+            padding: 1rem 1.4rem; margin-bottom: 1.5rem;
+            font-size: 0.85rem; color: #78350f;
+        }
+        .info-banner .banner-t { font-weight: 700; margin-bottom: 0.3rem; }
+
+        .empty-state { padding: 3rem; text-align: center; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/admin/book"><i class="fas fa-book-open me-2"></i>Thư Viện Admin</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="/admin/book"><i class="fas fa-books me-1"></i>Sách</a>
+            <a class="nav-link" href="/admin/category"><i class="fas fa-tags me-1"></i>Danh Mục</a>
+            <a class="nav-link active" href="/admin/warehouse"><i class="fas fa-warehouse me-1"></i>Kho</a>
+            <a class="nav-link" href="/admin/borrow"><i class="fas fa-hand-holding-heart me-1"></i>Mượn Sách</a>
+        </div>
+        <div class="navbar-nav ms-auto">
+            <form th:action="@{/logout}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-1"></i>Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container-lg py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 style="font-size:1.5rem;font-weight:800;margin:0;">
+                <i class="fas fa-boxes me-2" style="color:#6366f1;"></i>Quản Lý Phiếu Nhập Kho
+            </h1>
+            <p class="text-muted mb-0" style="font-size:0.85rem;">Theo dõi tất cả lô hàng nhập kho từ nhà cung cấp.</p>
+        </div>
+        <a href="/admin/warehouse/new" class="btn btn-success fw-bold px-4">
+            <i class="fas fa-plus me-1"></i>Tạo Phiếu Nhập Mới
+        </a>
+    </div>
+
+    <!-- FLASH -->
+    <div th:if="${message}" class="alert alert-success alert-dismissible fade show rounded-3 mb-3" role="alert">
+        <i class="fas fa-check-circle me-2"></i><span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- STAT PILLS -->
+    <div class="stat-pills">
+        <span class="stat-pill pill-total">
+            <i class="fas fa-file-invoice"></i>
+            Tổng: <strong th:text="${#lists.size(receipts)}">0</strong> phiếu kho
+        </span>
+        <span class="stat-pill pill-info">
+            <i class="fas fa-lock"></i> Tất cả phiếu ở trạng thái Read-Only sau khi lưu
+        </span>
+    </div>
+
+    <!-- INFO BANNER -->
+    <div class="info-banner">
+        <div class="banner-t"><i class="fas fa-route me-2"></i>Quy Trình Kho-Trước (Bắt Buộc)</div>
+        <div>
+            Tất cả sách phải được nhập kho qua phiếu này <strong>trước khi</strong> thủ thư có thể đăng ký mã vạch và đưa lên kệ.
+            Số lượng phiếu kho khai báo chính là <strong>giới hạn tối đa</strong> số bản sao được lên kệ cho mỗi đầu sách.
+            <a href="/admin/warehouse/new" class="fw-bold text-warning ms-1">→ Tạo phiếu kho ngay</a>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="main-card">
+        <div class="card-top">
+            <h5><i class="fas fa-list me-2" style="color:#6366f1;"></i>Danh Sách Phiếu Nhập Kho</h5>
+            <span style="font-size:0.8rem;color:#94a3b8;">
+                <i class="fas fa-info-circle me-1"></i>Xanh = khớp khai báo · Đỏ = lệch số liệu
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table receipt-table">
+                <thead>
+                    <tr>
+                        <th>Mã Phiếu</th>
+                        <th>Ngày Nhập</th>
+                        <th>SL Khai Báo</th>
+                        <th>SL Thực Tế</th>
+                        <th>Tiền Khai Báo</th>
+                        <th>Tiền Thực Tế</th>
+                        <th>Trạng Thái</th>
+                        <th>Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="receipt : ${receipts}">
+                        <td><span class="receipt-id" th:text="'PNK-' + ${receipt.receiptId}"></span></td>
+                        <td class="text-muted" th:text="${#temporals.format(receipt.importDate, 'dd-MM-yyyy HH:mm')}"></td>
+                        <td class="text-center" th:text="${receipt.declaredTotalQuantity}"></td>
+                        <td class="text-center">
+                            <span th:class="${receipt.declaredTotalQuantity == receipt.actualTotalQuantity} ? 'match-val' : 'mismatch-val'"
+                                  th:text="${receipt.actualTotalQuantity}"></span>
+                        </td>
+                        <td class="text-end" th:text="${#numbers.formatDecimal(receipt.declaredTotalPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'"></td>
+                        <td class="text-end">
+                            <span th:class="${receipt.declaredTotalPrice == receipt.actualTotalPrice} ? 'match-val' : 'mismatch-val'"
+                                  th:text="${#numbers.formatDecimal(receipt.actualTotalPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+                        </td>
+                        <td>
+                            <span class="badge px-2 py-1" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">
+                                <i class="fas fa-lock me-1"></i>Đã lưu
+                            </span>
+                        </td>
+                        <td>
+                            <a th:href="@{'/admin/warehouse/' + ${receipt.receiptId}}"
+                               class="btn btn-sm btn-outline-primary rounded-3" title="Xem Chi Tiết">
+                                <i class="fas fa-eye me-1"></i>Xem
+                            </a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(receipts)}">
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <i class="fas fa-box-open fa-3x mb-3" style="opacity:0.2;"></i>
+                                <div>Chưa có phiếu nhập kho nào. Hãy tạo phiếu đầu tiên!</div>
+                                <a href="/admin/warehouse/new" class="btn btn-success mt-3">
+                                    <i class="fas fa-plus me-1"></i>Tạo Phiếu Ngay
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

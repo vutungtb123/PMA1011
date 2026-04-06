@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>Tạo Phiếu Nhập Kho</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+        .page-header { background: linear-gradient(135deg, #1e293b, #334155); color: #fff; padding: 1.2rem 2rem; }
+        .page-header h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .card-header-custom {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #fff; padding: 0.9rem 1.4rem;
+            border-radius: 16px 16px 0 0; font-weight: 700;
+        }
+        .section-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(255,255,255,0.25); font-weight: 800; margin-right: 8px;
+        }
+        .summary-box { background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 14px; padding: 1.2rem 1.6rem; }
+        .match { color: #059669; font-weight: 700; }
+        .mismatch { color: #dc2626; font-weight: 700; }
+
+        /* === BOOK SELECT CELL === */
+        .book-select-cell { position: relative; }
+        .book-search-mini {
+            width: 100%;
+            padding: 6px 10px 6px 30px;
+            border: 1px solid #cbd5e1; border-radius: 8px;
+            font-size: 0.83rem; background: #f8fafc;
+            margin-bottom: 4px; outline: none;
+        }
+        .book-search-mini:focus { border-color: #6366f1; background: #fff; }
+        .search-icon-mini { position: absolute; left: 9px; top: 10px; color: #94a3b8; font-size: 0.75rem; }
+        .book-select-mini {
+            width: 100%; padding: 6px 8px;
+            border: 2px solid #e2e8f0; border-radius: 8px;
+            font-size: 0.83rem; background: #fff; cursor: pointer; outline: none;
+        }
+        .book-select-mini:focus { border-color: #6366f1; }
+        .book-select-mini.selected { border-color: #10b981; background: #f0fdf4; }
+        .author-display {
+            font-size: 0.78rem; color: #64748b; padding: 3px 6px;
+            background: #f1f5f9; border-radius: 6px; margin-top: 3px;
+            min-height: 22px;
+        }
+
+        /* TABLE */
+        #detailsTable th { background: #f1f5f9; font-size: 0.8rem; font-weight: 600;
+                           text-transform: uppercase; color: #64748b; padding: 10px 8px; }
+        #detailsTable td { padding: 8px 6px; vertical-align: middle; }
+        #detailsTable .form-control { font-size: 0.88rem; border-radius: 8px; }
+
+        /* BUTTONS */
+        .btn-add-row { background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; border-radius: 10px; }
+        .btn-add-row:hover { color: #fff; opacity: 0.9; }
+        .btn-save-success { background: linear-gradient(135deg, #059669, #10b981); border: none;
+                           font-weight: 700; letter-spacing: 0.3px; border-radius: 12px; padding: 12px 40px; }
+        .btn-save-warning { background: linear-gradient(135deg, #d97706, #f59e0b); border: none;
+                           font-weight: 700; border-radius: 12px; padding: 12px 40px; }
+        .alert-mini { border-radius: 12px; font-size: 0.9rem; }
+
+        /* REQUIRED BADGE */
+        .req { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="fas fa-file-invoice me-2" style="color: #818cf8;"></i>Tạo Phiếu Nhập Kho Mới</h2>
+    <div class="d-flex gap-2">
+        <a href="/admin/book" class="btn btn-sm btn-outline-light rounded-pill px-3">
+            <i class="fas fa-home me-1"></i> Trang Chủ
+        </a>
+        <a href="/admin/warehouse" class="btn btn-sm btn-outline-light rounded-pill px-3">
+            <i class="fas fa-arrow-left me-1"></i> Danh sách kho
+        </a>
+    </div>
+</div>
+
+<!-- Nhúng danh sách sách vào JS từ Thymeleaf -->
+<script th:inline="javascript">
+    // Dữ liệu sách từ server (BookID, Title, Author)
+    const BOOKS_DATA = /*[[${allBooks}]]*/ [];
+</script>
+
+<div class="container-lg py-4">
+    <!-- ALERT BOX -->
+    <div id="alertBox" class="alert d-none alert-mini" role="alert"></div>
+
+    <form id="receiptForm">
+
+        <!-- SECTION 1: GENERAL INFO -->
+        <div class="card mb-4">
+            <div class="card-header-custom">
+                <span class="section-num">1</span>
+                THÔNG TIN LÔ HÀNG (TỔNG QUÁT)
+            </div>
+            <div class="card-body pt-4">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Ngày Nhập <span class="req">*</span></label>
+                        <input type="datetime-local" class="form-control" id="importDate" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tổng Số Lượng (Theo Hóa Đơn) <span class="req">*</span></label>
+                        <input type="number" class="form-control" id="declaredTotalQuantity" min="1" required placeholder="VD: 20">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tổng Số Tiền (Theo Hóa Đơn) <span class="req">*</span></label>
+                        <div class="input-group">
+                            <input type="number" step="1000" class="form-control" id="declaredTotalPrice" min="0" required placeholder="VD: 500000">
+                            <span class="input-group-text">₫</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: DETAIL ROWS -->
+        <div class="card mb-4">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <span><span class="section-num">2</span>CHI TIẾT TỪNG CUỐN SÁCH MUA VỀ</span>
+                <button type="button" class="btn btn-sm btn-add-row px-3" id="addRowBtn">
+                    <i class="fas fa-plus me-1"></i> Thêm Dòng
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="alert alert-warning m-3 mb-0 py-2 px-3" style="border-radius:10px;font-size:0.86rem;">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <strong>Bắt buộc:</strong> Mỗi dòng phải chọn đầu sách từ hệ thống. Nếu sách chưa tồn tại, hãy
+                    <a href="/admin/book/new" target="_blank" class="fw-bold text-warning">tạo đầu sách mới</a> trước, rồi quay lại đây.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0" id="detailsTable">
+                        <thead>
+                            <tr>
+                                <th style="width:40px">STT</th>
+                                <th style="width:40%">Chọn Đầu Sách <span class="req">*</span></th>
+                                <th style="width:12%">Số Lượng <span class="req">*</span></th>
+                                <th style="width:15%">Đơn Giá (₫) <span class="req">*</span></th>
+                                <th style="width:15%">Thành Tiền</th>
+                                <th style="width:40px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailBody">
+                            <!-- Dòng đầu tiên chèn bởi JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: SUMMARY -->
+        <div class="summary-box mb-4">
+            <h6 class="mb-3 fw-bold text-primary"><i class="fas fa-calculator me-2"></i>ĐỐI CHIẾU THỰC TẾ</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Tổng SL Thực Tế:</span>
+                        <span id="actualTotalQty" class="fw-bold fs-5">0</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Lệch SL so với Khai Báo:</span>
+                        <span id="diffQty" class="fw-bold">0</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Tổng Tiền Thực Tế:</span>
+                        <span id="actualTotalAmt" class="fw-bold fs-5">0 ₫</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Lệch Tiền so với Khai Báo:</span>
+                        <span id="diffAmt" class="fw-bold">0 ₫</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end">
+            <button type="submit" class="btn btn-save-success text-white btn-lg" id="saveBtn">
+                <i class="fas fa-save me-2"></i>LƯU PHIẾU NHẬP
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const fmt = val => new Intl.NumberFormat('vi-VN').format(Math.round(val));
+
+// ===================== BUILD SELECT HTML =====================
+function buildBookSelect(rowIndex) {
+    let opts = `<option value="">-- Chọn đầu sách --</option>`;
+    (BOOKS_DATA || []).forEach(b => {
+        opts += `<option value="${b.bookId}" data-author="${b.author || ''}">${b.title}${b.author ? ' — ' + b.author : ''}</option>`;
+    });
+    return `
+        <div class="book-select-cell">
+            <div style="position:relative">
+                <i class="fas fa-search search-icon-mini"></i>
+                <input type="text" class="book-search-mini book-search" placeholder="Tìm nhanh tên sách...">
+            </div>
+            <select class="book-select-mini book-select" required data-row="${rowIndex}">
+                ${opts}
+            </select>
+            <div class="author-display author-info text-truncate">Chưa chọn sách</div>
+        </div>
+    `;
+}
+
+// ===================== BUILD ROW HTML =====================
+let rowCount = 0;
+function buildRow() {
+    rowCount++;
+    return `
+        <tr class="detail-row" data-row="${rowCount}">
+            <td class="text-center fw-bold text-muted row-index">${rowCount}</td>
+            <td>${buildBookSelect(rowCount)}</td>
+            <td><input type="number" class="form-control text-center quantity" value="1" min="1" required></td>
+            <td><input type="number" step="1000" class="form-control text-end price" value="0" min="0" required></td>
+            <td><input type="text" class="form-control text-end row-total bg-light" value="0 ₫" readonly></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-row rounded-circle" style="width:30px;height:30px;padding:0;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+// ===================== INIT =====================
+$(document).ready(function() {
+    // Datetime default = now
+    var now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    $('#importDate').val(now.toISOString().slice(0, 16));
+
+    // First row
+    $('#detailBody').append(buildRow());
+    calculateTotals();
+
+    // ===================== LIVE SEARCH FILTER =====================
+    $(document).on('input', '.book-search', function() {
+        const keyword = $(this).val().toLowerCase();
+        const $select = $(this).closest('.book-select-cell').find('.book-select');
+        $select.find('option').each(function() {
+            const text = $(this).text().toLowerCase();
+            $(this).prop('hidden', $(this).val() !== '' && !text.includes(keyword));
+        });
+    });
+
+    // ===================== BOOK SELECTED → AUTO-FILL AUTHOR =====================
+    $(document).on('change', '.book-select', function() {
+        const opt = $(this).find('option:selected');
+        const author = opt.data('author') || '';
+        const val = $(this).val();
+        const $cell = $(this).closest('.book-select-cell');
+        if (val) {
+            $cell.find('.author-info').text(author ? '✍ ' + author : '(Chưa có tác giả)');
+            $(this).addClass('selected');
+        } else {
+            $cell.find('.author-info').text('Chưa chọn sách');
+            $(this).removeClass('selected');
+        }
+    });
+
+    // ===================== CALCULATE TOTALS =====================
+    function calculateTotals() {
+        let actualQty = 0, actualAmt = 0;
+
+        $('#detailBody .detail-row').each(function(i) {
+            $(this).find('.row-index').text(i + 1);
+            const qty = parseFloat($(this).find('.quantity').val()) || 0;
+            const price = parseFloat($(this).find('.price').val()) || 0;
+            const total = qty * price;
+            $(this).find('.row-total').val(fmt(total) + ' ₫');
+            actualQty += qty;
+            actualAmt += total;
+        });
+
+        const declQ = parseFloat($('#declaredTotalQuantity').val()) || 0;
+        const declA = parseFloat($('#declaredTotalPrice').val()) || 0;
+
+        $('#actualTotalQty').text(actualQty);
+        $('#actualTotalAmt').text(fmt(actualAmt) + ' ₫');
+
+        const dq = actualQty - declQ;
+        const da = actualAmt - declA;
+
+        $('#diffQty').text((dq >= 0 ? '+' : '') + dq)
+            .removeClass('match mismatch').addClass(dq === 0 ? 'match' : 'mismatch');
+        $('#diffAmt').text((da >= 0 ? '+' : '') + fmt(da) + ' ₫')
+            .removeClass('match mismatch').addClass(da === 0 ? 'match' : 'mismatch');
+
+        if (dq !== 0 || da !== 0) {
+            $('#saveBtn').removeClass('btn-save-success').addClass('btn-save-warning')
+                .html('<i class="fas fa-exclamation-triangle me-2"></i>LƯU VỚI CẢNH BÁO LỆCH');
+        } else {
+            $('#saveBtn').removeClass('btn-save-warning').addClass('btn-save-success')
+                .html('<i class="fas fa-save me-2"></i>LƯU PHIẾU NHẬP');
+        }
+    }
+
+    $(document).on('input', '.quantity, .price, #declaredTotalQuantity, #declaredTotalPrice', calculateTotals);
+
+    // ===================== ADD ROW =====================
+    $('#addRowBtn').click(function() {
+        $('#detailBody').append(buildRow());
+        calculateTotals();
+        // Scroll to new row
+        const $last = $('#detailBody .detail-row:last');
+        $last[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // ===================== REMOVE ROW =====================
+    $(document).on('click', '.remove-row', function() {
+        if ($('#detailBody .detail-row').length > 1) {
+            $(this).closest('tr').remove();
+            calculateTotals();
+        } else {
+            alert('Phải có ít nhất 1 dòng chi tiết!');
+        }
+    });
+
+    // ===================== SUBMIT =====================
+    $('#receiptForm').submit(function(e) {
+        e.preventDefault();
+
+        // Validate: phải chọn sách cho mỗi dòng
+        let hasUnselected = false;
+        $('#detailBody .detail-row').each(function(i) {
+            const bookId = $(this).find('.book-select').val();
+            if (!bookId) {
+                hasUnselected = true;
+                $(this).find('.book-select').addClass('is-invalid');
+            } else {
+                $(this).find('.book-select').removeClass('is-invalid');
+            }
+        });
+
+        if (hasUnselected) {
+            showAlert('danger', '⚠️ Mỗi dòng chi tiết phải chọn đầu sách từ hệ thống. Hãy chọn sách cho tất cả các dòng!');
+            window.scrollTo(0, 0);
+            return;
+        }
+
+        // Lấy CSRF token
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+        // Lấy và format ngày nhập để Jackson parse dễ dàng
+        let dtValue = $('#importDate').val();
+        if (dtValue && dtValue.length === 16) {
+            dtValue += ':00'; // Đảm bảo có giây "Txx:xx:00"
+        }
+
+        // Build payload
+        const data = {
+            importDate: dtValue,
+            declaredTotalQuantity: parseInt($('#declaredTotalQuantity').val()),
+            declaredTotalPrice: parseFloat($('#declaredTotalPrice').val()),
+            details: []
+        };
+
+        $('#detailBody .detail-row').each(function() {
+            const $row = $(this);
+            const $select = $row.find('.book-select');
+            const opt = $select.find('option:selected');
+            data.details.push({
+                bookId:    parseInt($select.val()),
+                bookTitle: opt.text().split(' — ')[0].trim(),
+                author:    opt.data('author') || '',
+                quantity:  parseInt($row.find('.quantity').val()),
+                price:     parseFloat($row.find('.price').val())
+            });
+        });
+
+        // AJAX
+        $.ajax({
+            url: '/admin/warehouse/api/save',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: {
+                [csrfHeader]: csrfToken
+            },
+            data: JSON.stringify(data),
+            success: function(response) {
+                if (response.success) {
+                    showAlert('success', '✅ ' + response.message + ' Đang chuyển hướng...');
+                    setTimeout(() => window.location.href = '/admin/warehouse/' + response.receiptId, 1500);
+                }
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message : 'Lỗi hệ thống!';
+                showAlert('danger', '❌ ' + msg);
+                window.scrollTo(0, 0);
+            }
+        });
+    });
+
+    function showAlert(type, msg) {
+        $('#alertBox').removeClass('d-none alert-success alert-danger')
+            .addClass('alert-' + type).html(msg);
+        window.scrollTo(0, 0);
+    }
+});
+</script>
+</body>
+</html>
