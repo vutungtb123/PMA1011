@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>Lên Kệ Hàng Loạt - Thư Viện Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+
+        /* NAVBAR */
+        .top-bar {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 0.9rem 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        .top-bar .brand { color: #fff; font-weight: 700; font-size: 1.2rem; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .top-bar .brand i { color: #818cf8; }
+        .btn-back { background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.15);
+                    border-radius: 10px; padding: 6px 16px; text-decoration: none; font-size: 0.88rem; transition: all 0.2s; }
+        .btn-back:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+        /* PAGE HEADER */
+        .page-header { padding: 2.5rem 0 1.5rem; }
+        .page-header h1 { font-size: 1.8rem; font-weight: 800; color: var(--text); margin-bottom: 0.25rem; }
+        .page-header p { color: var(--muted); font-size: 0.95rem; }
+
+        /* MAIN CARD */
+        .main-card {
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .card-top-bar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 1.2rem 1.8rem;
+            color: #fff;
+        }
+        .card-top-bar h5 { margin: 0; font-weight: 700; font-size: 1rem; }
+        .card-top-bar p { margin: 0; opacity: 0.8; font-size: 0.84rem; }
+        .card-body-custom { padding: 2rem 1.8rem; }
+
+        /* BOOK SELECT */
+        .select2-wrapper { position: relative; }
+        .book-search-input {
+            width: 100%; padding: 12px 16px 12px 44px;
+            border: 2px solid var(--border); border-radius: 12px;
+            font-size: 0.95rem; color: var(--text);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #f8fafc; outline: none;
+        }
+        .book-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); background: #fff; }
+        .book-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+        .book-select-native {
+            width: 100%; padding: 12px 16px;
+            border: 2px solid var(--border); border-radius: 12px;
+            font-size: 0.95rem; color: var(--text);
+            background: #f8fafc; outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .book-select-native:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); background: #fff; }
+
+        /* PREVIEW CARD */
+        .preview-section {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 1px solid #bae6fd; border-radius: 16px;
+            padding: 1.5rem; margin-top: 1.2rem;
+            transition: all 0.3s;
+        }
+        .preview-section.hidden { display: none; }
+        .preview-cover {
+            width: 72px; height: 100px; border-radius: 8px;
+            object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+        .preview-cover-placeholder {
+            width: 72px; height: 100px; border-radius: 8px;
+            background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.8rem; flex-shrink: 0;
+        }
+        .preview-info h6 { font-weight: 700; color: #0c4a6e; margin-bottom: 4px; }
+        .preview-info .meta { font-size: 0.83rem; color: #0369a1; }
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(99,102,241,0.1); color: var(--primary);
+            border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
+        }
+
+        /* QUANTITY INPUT */
+        .qty-wrapper { display: flex; align-items: center; gap: 12px; margin-top: 1.5rem; }
+        .qty-btn {
+            width: 42px; height: 42px; border-radius: 10px;
+            border: 2px solid var(--border); background: var(--bg);
+            font-size: 1.2rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; color: var(--text);
+        }
+        .qty-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,0.05); }
+        .qty-input {
+            width: 100px; text-align: center;
+            border: 2px solid var(--border); border-radius: 12px;
+            padding: 10px 0; font-size: 1.4rem; font-weight: 700;
+            color: var(--text); outline: none;
+            transition: border-color 0.2s; background: #fff;
+        }
+        .qty-input:focus { border-color: var(--primary); }
+
+        /* SUBMIT */
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; border: none; border-radius: 14px;
+            padding: 14px 32px; font-size: 1rem; font-weight: 700;
+            width: 100%; margin-top: 1.8rem; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(99,102,241,0.35);
+            transition: all 0.3s; letter-spacing: 0.3px;
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99,102,241,0.45); }
+        .btn-submit:active { transform: translateY(0); }
+        .btn-submit:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+
+        /* RESULT PANEL */
+        .result-panel {
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .result-header {
+            background: linear-gradient(135deg, #065f46, #047857);
+            color: #fff; padding: 1.2rem 1.8rem; border-radius: 20px 20px 0 0;
+        }
+        .result-table th { background: #f1f5f9; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+        .barcode-badge { font-family: monospace; background: #f0fdf4; color: #065f46; border: 1px solid #bbf7d0;
+                         padding: 3px 10px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; }
+        .status-pill { background: #dcfce7; color: #166534; border-radius: 20px; padding: 3px 12px; font-size: 0.8rem; font-weight: 600; }
+
+        /* ALERTS */
+        .alert-custom {
+            border-radius: 14px; padding: 1rem 1.4rem; font-weight: 500;
+            border: none; display: flex; align-items: center; gap: 10px;
+        }
+        .alert-success-custom { background: #f0fdf4; color: #166534; border-left: 4px solid #22c55e; }
+        .alert-error-custom { background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444; }
+
+        /* LABEL */
+        .form-label-custom { font-weight: 600; font-size: 0.88rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+    <a href="/admin/book" class="brand">
+        <i class="fas fa-layer-group"></i>
+        Quản Lý Thư Viện
+    </a>
+    <a href="/admin/book" class="btn-back">
+        <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách sách
+    </a>
+</div>
+
+<div class="container-lg py-0">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <h1><i class="fas fa-cubes me-2" style="color: var(--primary);"></i>Lên Kệ Hàng Loạt</h1>
+        <p>Chọn đầu sách từ danh mục và nhập số lượng — hệ thống tự động tạo mã vạch và đưa lên kệ ngay lập tức.</p>
+    </div>
+
+    <!-- ALERTS -->
+    <div th:if="${message}" class="alert-custom alert-success-custom mb-4">
+        <i class="fas fa-check-circle fa-lg"></i>
+        <span th:text="${message}"></span>
+    </div>
+    <div th:if="${error}" class="alert-custom alert-error-custom mb-4">
+        <i class="fas fa-exclamation-circle fa-lg"></i>
+        <span th:text="${error}"></span>
+    </div>
+
+    <div class="row g-4">
+        <!-- FORM COLUMN -->
+        <div class="col-lg-5">
+            <div class="main-card">
+                <div class="card-top-bar">
+                    <h5><i class="fas fa-boxes me-2"></i>Chọn Sách & Số Lượng</h5>
+                    <p>Tìm đầu sách đã có trong hệ thống, không cần nhập lại thông tin.</p>
+                </div>
+                <div class="card-body-custom">
+                    <form id="bulkForm" onsubmit="submitBulkForm(event)">
+
+                        <!-- BOOK SELECT -->
+                        <div class="mb-1">
+                            <div class="form-label-custom">Tìm & Chọn Đầu Sách</div>
+                            <!-- Ô tìm kiếm lọc nhanh -->
+                            <div class="select2-wrapper mb-2">
+                                <i class="fas fa-search book-search-icon"></i>
+                                <input type="text" class="book-search-input" id="bookSearchInput" placeholder="Gõ tên sách hoặc tác giả để lọc...">
+                            </div>
+                            <!-- Select box thật -->
+                            <select class="book-select-native" name="bookId" id="bookSelect" required onchange="updatePreview()">
+                                <option value="">-- Chọn đầu sách --</option>
+                                <option th:each="b : ${allBooks}"
+                                        th:value="${b.bookId}"
+                                        th:text="${b.title + (b.author != null ? ' — ' + b.author : '')}"
+                                        th:attr="data-title=${b.title}, data-author=${b.author}, data-cover=${b.coverImage}, data-id=${b.bookId}">
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- PREVIEW CARD -->
+                        <div class="preview-section hidden" id="previewSection">
+                            <div class="d-flex gap-3 align-items-center">
+                                <div id="previewCoverWrap">
+                                    <div class="preview-cover-placeholder"><i class="fas fa-book"></i></div>
+                                </div>
+                                <div class="preview-info flex-grow-1">
+                                    <h6 id="previewTitle">Tên sách</h6>
+                                    <div class="meta mb-2" id="previewAuthor"></div>
+                                    <span class="stat-pill">
+                                        <i class="fas fa-hashtag"></i>
+                                        ID Sách: <span id="previewId">-</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- WAREHOUSE STATUS BADGE -->
+                            <div id="warehouseStatus" class="mt-3 rounded-3 p-3" style="display:none;">
+                            </div>
+                            <!-- QUANTITY WARNING -->
+                            <div id="qtyWarning" class="mt-2 rounded-3 p-3" style="display:none; background:#fff7ed; border:1px solid #fed7aa;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-exclamation-triangle" style="color:#d97706;font-size:1.1rem;"></i>
+                                    <span id="qtyWarningText" style="font-size:0.84rem; color:#92400e; font-weight:600;"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- QUANTITY -->
+                        <div class="mt-4">
+                            <div class="form-label-custom">Số Lượng Bản Sao Cần Thêm</div>
+                            <!-- Hint số lượng tối đa -->
+                            <div id="qtyHint" style="display:none; font-size:0.8rem; color:#6366f1; margin-bottom:8px; font-weight:600;">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span id="qtyHintText"></span>
+                            </div>
+                            <div class="qty-wrapper">
+                                <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
+                                <input type="number" class="qty-input" name="quantity" id="quantityInput"
+                                       value="1" min="1" max="100" required oninput="checkQtyLimit()">
+                                <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                                <span class="text-muted" style="font-size: 0.85rem;">bản sao<br><small id="qtyMaxLabel">(tối đa 100)</small></span>
+                            </div>
+
+                            <!-- Quick qty chips -->
+                            <div class="mt-3 d-flex flex-wrap gap-2">
+                                <span class="text-muted" style="font-size: 0.82rem; align-self: center;">Nhanh:</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="setQty(1)">×1</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="setQty(3)">×3</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="setQty(5)">×5</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="setQty(10)">×10</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="setQty(20)">×20</button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-submit" id="submitBtn" disabled>
+                            <i class="fas fa-upload me-2"></i>
+                            Lên Kệ Ngay
+                        </button>
+
+                        <p class="text-center text-muted mt-3" style="font-size: 0.82rem;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Mã vạch tự động theo <code>BK{id}-{STT}-{UUID}</code>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: How it works + recent books list -->
+        <div class="col-lg-7">
+            <!-- HOW IT WORKS -->
+            <div class="main-card mb-4">
+                <div class="card-body-custom">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-lightbulb text-warning me-2"></i>Cách thức hoạt động</h6>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex gap-3 align-items-start">
+                            <div style="width:36px;height:36px;border-radius:50%;background:rgba(99,102,241,0.1);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">1</div>
+                            <div>
+                                <div class="fw-semibold">Chọn đầu sách từ danh mục</div>
+                                <div class="text-muted" style="font-size:0.85rem;">Tìm theo tên hoặc tác giả. Sách đã có thông tin đầy đủ từ lần nhập kho trước.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 align-items-start">
+                            <div style="width:36px;height:36px;border-radius:50%;background:rgba(99,102,241,0.1);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">2</div>
+                            <div>
+                                <div class="fw-semibold">Nhập số lượng bản sao cần lên kệ</div>
+                                <div class="text-muted" style="font-size:0.85rem;">Nhập hoặc chọn nhanh: 1, 3, 5, 10, 20 bản sao. Tối đa 100 bản mỗi lần.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 align-items-start">
+                            <div style="width:36px;height:36px;border-radius:50%;background:rgba(16,185,129,0.1);color:#059669;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">3</div>
+                            <div>
+                                <div class="fw-semibold">Hệ thống tự tạo mã vạch & lên kệ</div>
+                                <div class="text-muted" style="font-size:0.85rem;">Mỗi bản sao được cấp mã vạch duy nhất <code>BK{ID}-{STT}-{UUID}</code>, trạng thái mặc định là <span class="status-pill">Sẵn sàng</span>.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOOK LIST TABLE -->
+            <div class="result-panel">
+                <div class="result-header">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i>Danh Sách Sách Trong Hệ Thống</h6>
+                </div>
+                <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="result-table" style="padding: 0.8rem 1rem;">ID</th>
+                                <th class="result-table" style="padding: 0.8rem 1rem;">Tên Sách</th>
+                                <th class="result-table" style="padding: 0.8rem 1rem;">Tác Giả</th>
+                                <th class="result-table" style="padding: 0.8rem 1rem; text-align:center;">Chọn Nhanh</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookTableBody">
+                            <tr th:each="b : ${allBooks}">
+                                <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--muted); font-size: 0.85rem;"
+                                    th:text="'#' + ${b.bookId}"></td>
+                                <td style="padding: 0.75rem 1rem;">
+                                    <div class="fw-semibold" style="font-size: 0.9rem;" th:text="${b.title}"></div>
+                                    <div style="font-size: 0.78rem; color: var(--muted);" th:text="${b.publisher}"></div>
+                                </td>
+                                <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: var(--muted);"
+                                    th:text="${b.author != null ? b.author : '—'}"></td>
+                                <td style="padding: 0.75rem 1rem; text-align:center;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                            style="font-size: 0.8rem;"
+                                            th:onclick="'selectBookById(' + ${b.bookId} + ')'">
+                                        <i class="fas fa-hand-pointer me-1"></i>Chọn
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SUCCESS MODAL ===== -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px; border:none; overflow:hidden;">
+            <div class="modal-body p-0">
+                <!-- Header xanh -->
+                <div style="background:linear-gradient(135deg,#065f46,#047857);padding:2rem;text-align:center;">
+                    <div style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                        <i class="fas fa-check" style="font-size:2rem;color:#fff;"></i>
+                    </div>
+                    <h5 style="color:#fff;font-weight:800;margin:0;">Lên Kệ Thành Công!</h5>
+                </div>
+                <!-- Body -->
+                <div style="padding:1.8rem;text-align:center;">
+                    <p id="successModalMsg" style="font-size:1rem;color:#1e293b;font-weight:600;margin-bottom:1.2rem;"></p>
+                    <div id="successModalDetail" style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:1rem;margin-bottom:1.5rem;font-size:0.88rem;color:#166534;"></div>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-success rounded-pill px-4 fw-bold"
+                                onclick="closeSuccessAndRefresh()">
+                            <i class="fas fa-redo me-2"></i>Lên kệ tiếp
+                        </button>
+                        <a href="/admin/book" class="btn btn-outline-secondary rounded-pill px-4">
+                            <i class="fas fa-home me-2"></i>Trang chủ Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ERROR MODAL ===== -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px;border:none;overflow:hidden;">
+            <div class="modal-body p-0">
+                <div style="background:linear-gradient(135deg,#991b1b,#dc2626);padding:2rem;text-align:center;">
+                    <div style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                        <i class="fas fa-times" style="font-size:2rem;color:#fff;"></i>
+                    </div>
+                    <h5 style="color:#fff;font-weight:800;margin:0;">Không Thể Lên Kệ</h5>
+                </div>
+                <div style="padding:1.8rem;text-align:center;">
+                    <p id="errorModalMsg" style="font-size:0.95rem;color:#7f1d1d;font-weight:600;margin-bottom:1.5rem;"></p>
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left me-2"></i>Quay lại chỉnh sửa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// === QUANTITY CONTROLS ===
+function changeQty(delta) {
+    const input = document.getElementById('quantityInput');
+    let val = parseInt(input.value) + delta;
+    if (val < 1) val = 1;
+    if (val > 100) val = 100;
+    input.value = val;
+    checkQtyLimit();
+}
+function setQty(val) {
+    document.getElementById('quantityInput').value = val;
+    checkQtyLimit();
+}
+
+// === BOOK PREVIEW + WAREHOUSE CHECK ===
+function updatePreview() {
+    const select = document.getElementById('bookSelect');
+    const opt = select.options[select.selectedIndex];
+    const preview = document.getElementById('previewSection');
+    const btn = document.getElementById('submitBtn');
+    const warehouseDiv = document.getElementById('warehouseStatus');
+
+    if (!opt || !opt.value) {
+        preview.classList.add('hidden');
+        warehouseDiv.style.display = 'none';
+        btn.disabled = true;
+        return;
+    }
+
+    const title = opt.getAttribute('data-title') || '';
+    const author = opt.getAttribute('data-author') || '';
+    const cover = opt.getAttribute('data-cover') || '';
+    const id = opt.getAttribute('data-id') || '';
+
+    document.getElementById('previewTitle').textContent = title;
+    document.getElementById('previewAuthor').textContent = author ? '✍️ ' + author : '';
+    document.getElementById('previewId').textContent = id;
+
+    const coverWrap = document.getElementById('previewCoverWrap');
+    if (cover && cover !== 'null') {
+        coverWrap.innerHTML = `<img src="${cover}" class="preview-cover" onerror="this.parentElement.innerHTML='<div class=\\'preview-cover-placeholder\\'><i class=\\'fas fa-book\\'></i></div>'">`;
+    } else {
+        coverWrap.innerHTML = '<div class="preview-cover-placeholder"><i class="fas fa-book"></i></div>';
+    }
+
+    preview.classList.remove('hidden');
+    btn.disabled = true; // Disable until warehouse check completes
+
+    // Show loading
+    warehouseDiv.style.display = 'block';
+    warehouseDiv.style.background = '#f5f3ff';
+    warehouseDiv.style.border = '1px solid #c4b5fd';
+    warehouseDiv.innerHTML = `<div class="d-flex align-items-center gap-2" style="color:#6366f1;">
+        <div class="spinner-border spinner-border-sm" style="width:16px;height:16px;border-width:2px;"></div>
+        <span style="font-size:0.84rem;">Đang kiểm tra phiếu nhập kho...</span>
+    </div>`;
+
+    // Call check-warehouse API
+    fetch(`/admin/book/api/check-warehouse?bookId=${id}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.hasWarehouse) {
+                const wQty = data.warehouseQty || 0;
+                const existing = data.existingCopies || 0;
+                const remaining = data.remainingSlots || 0;
+
+                // Lưu để validate số lượng
+                window._warehouseData = { wQty, existing, remaining };
+
+                // Cập nhật hint & max input
+                document.getElementById('qtyHint').style.display = 'block';
+                document.getElementById('qtyHintText').textContent =
+                    `Kho ghi nhận ${wQty} cuốn — đã đăng ký ${existing} bản sao — còn tối đa ${remaining} bản sao`;
+                document.getElementById('qtyMaxLabel').textContent = `(tối đa ${remaining} theo kho)`;
+                document.getElementById('quantityInput').max = remaining > 0 ? remaining : 100;
+
+                warehouseDiv.style.background = '#f0fdf4';
+                warehouseDiv.style.border = '1px solid #86efac';
+                warehouseDiv.innerHTML = `
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="fas fa-check-circle" style="color:#16a34a;font-size:1.3rem;margin-top:2px;"></i>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;color:#15803d;font-size:0.88rem;">✅ Đã có phiếu nhập kho</div>
+                            <div style="font-size:0.78rem;color:#166534;margin-top:4px;">
+                                <table style="width:100%;border-collapse:collapse;">
+                                    <tr><td style="padding:2px 8px 2px 0;">📦 Tổng nhập kho:</td><td style="font-weight:700;">${wQty} cuốn</td></tr>
+                                    <tr><td style="padding:2px 8px 2px 0;">🏷️ Đã tạo mã vạch:</td><td style="font-weight:700;">${existing} bản sao</td></tr>
+                                    <tr style="border-top:1px solid #bbf7d0;"><td style="padding:4px 8px 2px 0;font-weight:700;color:#15803d;">✨ Còn có thể lên kệ:</td><td style="font-weight:800;color:#15803d;font-size:1rem;">${remaining} bản sao</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`;
+
+                if (remaining > 0) {
+                    btn.disabled = false;
+                    checkQtyLimit();
+                } else {
+                    btn.disabled = true;
+                    warehouseDiv.innerHTML += `<div class="mt-2 p-2 rounded" style="background:#fef2f2;border:1px solid #fca5a5;font-size:0.8rem;color:#dc2626;font-weight:600;">⛔ Đã đạt giới hạn! Số bản sao đã đăng ký bằng số lượng trong phiếu kho.</div>`;
+                }
+            } else {
+                window._warehouseData = null;
+                document.getElementById('qtyHint').style.display = 'none';
+                document.getElementById('qtyMaxLabel').textContent = '(tối đa 100)';
+                document.getElementById('quantityInput').max = 100;
+                document.getElementById('qtyWarning').style.display = 'none';
+
+                warehouseDiv.style.background = '#fef2f2';
+                warehouseDiv.style.border = '1px solid #fca5a5';
+                warehouseDiv.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fas fa-ban" style="color:#dc2626;font-size:1.3rem;margin-top:2px;"></i>
+                        <div>
+                            <div style="font-weight:700;color:#dc2626;font-size:0.88rem;">❌ Chưa có phiếu nhập kho!</div>
+                            <div style="font-size:0.78rem;color:#991b1b;margin:4px 0;">
+                                Sách này chưa được mua vào kho. Không thể lên kệ.<br>
+                                Hãy tạo phiếu nhập kho trước, chọn đầu sách này trong chi tiết phiếu.
+                            </div>
+                            <a href="/admin/warehouse/new" class="btn btn-sm btn-danger rounded-pill px-3 mt-1" style="font-size:0.8rem;" target="_blank">
+                                <i class="fas fa-plus me-1"></i>Tạo phiếu nhập kho ngay
+                            </a>
+                        </div>
+                    </div>`;
+                btn.disabled = true;
+            }
+        })
+        .catch(() => {
+            warehouseDiv.style.background = '#fef9c3';
+            warehouseDiv.style.border = '1px solid #fde047';
+            warehouseDiv.innerHTML = '<span style="color:#92400e;font-size:0.84rem;">⚠️ Lỗi kiểm tra kho. Vui lòng thử lại.</span>';
+            btn.disabled = true;
+        });
+}
+
+// === VALIDATE SỐ LƯỢNG REAL-TIME ===
+function checkQtyLimit() {
+    const qty = parseInt(document.getElementById('quantityInput').value) || 0;
+    const qtyWarning = document.getElementById('qtyWarning');
+    const qtyWarningText = document.getElementById('qtyWarningText');
+    const btn = document.getElementById('submitBtn');
+    const wd = window._warehouseData;
+    if (!wd) return;
+
+    if (qty > wd.remaining) {
+        qtyWarning.style.display = 'block';
+        qtyWarningText.textContent =
+            `⚠️ Vượt quá kho! Bạn nhập ${qty} bản sao nhưng phiếu kho chỉ còn cho phép tối đa ${wd.remaining} bản sao nữa.`;
+        btn.disabled = true;
+    } else if (qty < 1) {
+        qtyWarning.style.display = 'block';
+        qtyWarningText.textContent = '⚠️ Số lượng phải ít nhất là 1.';
+        btn.disabled = true;
+    } else {
+        qtyWarning.style.display = 'none';
+        btn.disabled = false;
+    }
+}
+
+// === SELECT BY ID from table button ===
+function selectBookById(id) {
+    const select = document.getElementById('bookSelect');
+    for (let i = 0; i < select.options.length; i++) {
+        if (parseInt(select.options[i].value) === id) {
+            select.selectedIndex = i;
+            updatePreview();
+            // Scroll to form on mobile
+            document.getElementById('bulkForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            break;
+        }
+    }
+}
+
+// === LIVE FILTER in select ===
+document.getElementById('bookSearchInput').addEventListener('input', function() {
+    const keyword = this.value.toLowerCase();
+    const select = document.getElementById('bookSelect');
+    const tableRows = document.querySelectorAll('#bookTableBody tr');
+
+    // Filter select options
+    for (let i = 0; i < select.options.length; i++) {
+        const opt = select.options[i];
+        if (!opt.value) continue; // skip placeholder
+        const text = opt.textContent.toLowerCase();
+        opt.style.display = text.includes(keyword) ? '' : 'none';
+    }
+
+    // Filter table rows too
+    tableRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(keyword) ? '' : 'none';
+    });
+});
+
+// === AJAX SUBMIT FORM ===
+function submitBulkForm(event) {
+    event.preventDefault(); // Ngăn reload trang
+
+    const bookId = document.getElementById('bookSelect').value;
+    const quantity = document.getElementById('quantityInput').value;
+    const btn = document.getElementById('submitBtn');
+
+    if (!bookId || !quantity) return;
+
+    // Loading state
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+
+    const params = new URLSearchParams({ bookId, quantity });
+
+    // Lấy CSRF token từ meta tag (Spring Security yêu cầu cho POST)
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+    fetch('/admin/book/bulk-copies/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            [csrfHeader]: csrfToken
+        },
+        body: params.toString()
+    })
+    .then(r => {
+        if (r.status === 403) throw new Error('Phiên đăng nhập hết hạn. Vui lòng tải lại trang và thử lại.');
+        return r.json();
+    })
+    .then(data => {
+        // Khôi phục nút
+        btn.innerHTML = '<i class="fas fa-upload me-2"></i>Lên Kệ Ngay';
+        btn.disabled = false;
+
+        if (data.success) {
+            const bookTitle = document.getElementById('previewTitle').textContent;
+            // Hiện modal thành công
+            document.getElementById('successModalMsg').textContent = data.message;
+            document.getElementById('successModalDetail').innerHTML =
+                `📚 Sách: <strong>${bookTitle}</strong><br>` +
+                `✅ Đã tạo <strong>${data.created}</strong> bản sao mới với mã vạch tự động.<br>` +
+                `🏷️ Trạng thái: <strong>Sẵn sàng</strong> — có thể cho mượn ngay.`;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+
+            // Cập nhật lại số lượng kho sau khi lên kệ xong
+            updatePreview();
+        } else {
+            document.getElementById('errorModalMsg').textContent = data.message;
+            new bootstrap.Modal(document.getElementById('errorModal')).show();
+        }
+    })
+    .catch(err => {
+        btn.innerHTML = '<i class="fas fa-upload me-2"></i>Lên Kệ Ngay';
+        btn.disabled = false;
+        document.getElementById('errorModalMsg').textContent = err.message || 'Lỗi kết nối! Vui lòng thử lại.';
+        new bootstrap.Modal(document.getElementById('errorModal')).show();
+    });
+}
+
+// === ĐÓNG MODAL THÀNH CÔNG → Reset form để lên kệ tiếp ===
+function closeSuccessAndRefresh() {
+    bootstrap.Modal.getInstance(document.getElementById('successModal')).hide();
+    // Reset số lượng về 1, giữ nguyên sách đã chọn
+    document.getElementById('quantityInput').value = 1;
+    checkQtyLimit();
+}
+</script>
+</body>
+</html>

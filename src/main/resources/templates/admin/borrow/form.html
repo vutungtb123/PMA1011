@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Phiếu Mượn Tại Quầy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+
+        /* STEP INDICATOR */
+        .step-indicator {
+            display: flex; align-items: center; gap: 0; margin-bottom: 2rem;
+        }
+        .step-item {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.85rem; font-weight: 600; color: #94a3b8;
+        }
+        .step-item.active { color: #1e293b; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.85rem;
+            background: #e2e8f0; color: #94a3b8;
+            flex-shrink: 0;
+        }
+        .step-item.active .step-circle {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+        }
+        .step-line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 8px; min-width: 30px; }
+
+        /* SECTION CARDS */
+        .section-card {
+            background: #fff; border-radius: 20px; border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow: hidden;
+        }
+        .section-header {
+            padding: 1rem 1.4rem; border-bottom: 1px solid #e2e8f0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .section-header h5 { margin: 0; font-weight: 700; font-size: 0.95rem; }
+        .section-body { padding: 1.4rem; }
+
+        /* INPUTS */
+        .form-label-custom { font-weight: 600; font-size: 0.82rem; color: #64748b;
+                             text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+        .form-control, .form-select { border: 2px solid #e2e8f0; border-radius: 12px;
+                                       font-family: 'Inter', sans-serif; font-size: 0.92rem;
+                                       transition: border-color 0.2s; }
+        .form-control:focus, .form-select:focus {
+            border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+        }
+        .input-group-text { border: 2px solid #e2e8f0; background: #f8fafc; }
+        .input-group .form-control { border-right: none; }
+        .input-group .input-group-text:last-child { border-left: none; }
+
+        /* BOOK ROW */
+        .book-row-card {
+            background: #f8fafc; border-radius: 12px; border: 2px solid #e2e8f0;
+            padding: 10px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+        }
+        .book-row-card select { flex: 1; border: none; background: transparent;
+                                 font-family: 'Inter', sans-serif; font-size: 0.88rem; outline: none; }
+
+        /* BUTTON */
+        .btn-submit-borrow {
+            background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff;
+            border: none; border-radius: 14px; padding: 13px 40px;
+            font-weight: 800; font-size: 1rem; cursor: pointer;
+            box-shadow: 0 4px 14px rgba(217,119,6,0.3); transition: all 0.25s;
+            letter-spacing: 0.3px;
+        }
+        .btn-submit-borrow:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(217,119,6,0.4); color: #fff; }
+
+        /* TIP CARD */
+        .tip-card {
+            background: #fafafa; border-radius: 14px; border: 1px solid #e2e8f0;
+            padding: 1rem 1.2rem; margin-top: 1rem;
+        }
+        .tip-card .tip-t { font-weight: 700; font-size: 0.85rem; color: #1e293b; margin-bottom: 0.6rem; }
+        .tip-card ul { margin: 0; padding-left: 1.1rem; color: #64748b; font-size: 0.82rem; line-height: 1.9; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/admin/book"><i class="fas fa-book-open me-2"></i>Thư Viện Admin</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="/admin/book"><i class="fas fa-books me-1"></i>Sách</a>
+            <a class="nav-link" href="/admin/category"><i class="fas fa-tags me-1"></i>Danh Mục</a>
+            <a class="nav-link" href="/admin/warehouse"><i class="fas fa-warehouse me-1"></i>Kho</a>
+            <a class="nav-link active" href="/admin/borrow"><i class="fas fa-hand-holding-heart me-1"></i>Mượn Sách</a>
+        </div>
+        <div class="navbar-nav ms-auto">
+            <form th:action="@{/logout}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-1"></i>Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container-lg py-4 mb-5">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 style="font-size:1.5rem;font-weight:800;margin:0;">
+                <i class="fas fa-hand-holding-heart me-2" style="color:#f59e0b;"></i>Tiếp Nhận Mượn Sách Tại Quầy
+            </h1>
+            <p class="text-muted mb-0" style="font-size:0.85rem;">Thủ thư tạo phiếu mượn cho độc giả đến trực tiếp thư viện.</p>
+        </div>
+        <a href="/admin/borrow" class="btn btn-outline-secondary rounded-3">
+            <i class="fas fa-arrow-left me-1"></i>Quay Lại Danh Sách
+        </a>
+    </div>
+
+    <!-- STEP INDICATOR -->
+    <div class="step-indicator">
+        <div class="step-item active">
+            <div class="step-circle">1</div>
+            <span>Xác định độc giả</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item active">
+            <div class="step-circle">2</div>
+            <span>Chọn sách muốn mượn</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+            <div class="step-circle" style="background:#dcfce7;color:#16a34a;">3</div>
+            <span style="color:#16a34a;font-weight:700;">Xác nhận &amp; phát phiếu</span>
+        </div>
+    </div>
+
+    <!-- ERROR ALERT -->
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <strong>Lỗi Thao Tác:</strong> <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <form th:action="@{/admin/borrow/save}" method="post" th:object="${borrowDto}">
+        <div class="row g-4">
+
+            <!-- STEP 1: ĐỘC GIẢ -->
+            <div class="col-md-5">
+                <div class="section-card h-100">
+                    <div class="section-header">
+                        <h5>
+                            <span style="background:#ede9fe;color:#4f46e5;border-radius:6px;padding:2px 8px;font-size:0.78rem;margin-right:8px;">Bước 1</span>
+                            Thông Tin Độc Giả
+                        </h5>
+                    </div>
+                    <div class="section-body">
+                        <div class="mb-4">
+                            <label class="form-label-custom">Mã ID Tài Khoản Độc Giả <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control form-control-lg" th:field="*{readerId}"
+                                   placeholder="VD: 1, 2, 3..." required>
+                            <small class="text-muted mt-1 d-block">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Xem ID độc giả trong hệ thống quản lý Users.
+                            </small>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label-custom">Thời Hạn Mượn (Số Ngày) <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-lg">
+                                <input type="number" class="form-control" th:field="*{borrowDays}"
+                                       min="1" max="90" required placeholder="VD: 14">
+                                <span class="input-group-text fw-bold">Ngày</span>
+                            </div>
+                            <small class="text-muted mt-1 d-block">
+                                <i class="fas fa-clock me-1"></i>Tối đa 90 ngày. Thông thường 7–14 ngày.
+                            </small>
+                        </div>
+
+                        <!-- TIP -->
+                        <div class="tip-card">
+                            <div class="tip-t"><i class="fas fa-lightbulb me-1" style="color:#f59e0b;"></i>Lưu Ý Quy Trình</div>
+                            <ul>
+                                <li>Độc giả phải có tài khoản đã xác thực trong hệ thống.</li>
+                                <li>Phiếu mượn tại quầy được tạo ngay lập tức và có trạng thái <strong>"Đang mượn"</strong>.</li>
+                                <li>Hạn trả được tính từ thời điểm thủ thư bấm xác nhận.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: CHỌN SÁCH -->
+            <div class="col-md-7">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h5>
+                            <span style="background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 8px;font-size:0.78rem;margin-right:8px;">Bước 2</span>
+                            Chọn Sách Muốn Mượn
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3" id="addBookBtn">
+                            <i class="fas fa-plus me-1"></i>Thêm Đầu Sách
+                        </button>
+                    </div>
+                    <div class="section-body">
+
+                        <!-- INFO BANNER -->
+                        <div class="p-3 rounded-3 mb-3" style="background:#f0fdf4;border:1px solid #86efac;font-size:0.83rem;color:#166534;">
+                            <i class="fas fa-magic me-2"></i>
+                            <strong>Hệ thống tự động:</strong> Sau khi chọn đầu sách, hệ thống sẽ tự tìm và khóa bản sao vật lý đang <strong>Sẵn sàng</strong> nhất trên kệ. Thủ thư không cần chọn thủ công từng quyển.
+                        </div>
+
+                        <div id="bookSelectionContainer">
+                            <!-- Dropdown đầu tiên -->
+                            <div class="input-group mb-3 book-row">
+                                <span class="input-group-text bg-white"><i class="fas fa-book text-success"></i></span>
+                                <select class="form-select" name="bookIds" required>
+                                    <option value="" selected disabled>-- Chọn đầu sách muốn mượn --</option>
+                                    <option th:each="b : ${books}" th:value="${b.bookId}"
+                                            th:text="${b.title} + ' — ' + ${b.author}"></option>
+                                </select>
+                                <button type="button" class="btn btn-outline-danger remove-btn" disabled>
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TIP -->
+                        <div class="tip-card">
+                            <div class="tip-t"><i class="fas fa-lightbulb me-1" style="color:#f59e0b;"></i>Hướng Dẫn Chọn Sách</div>
+                            <ul>
+                                <li>Mỗi dòng là <strong>một đầu sách</strong>. Nhấn <em>"Thêm Đầu Sách"</em> để thêm nhiều đầu sách vào 1 phiếu.</li>
+                                <li>Chỉ có thể chọn đầu sách đang có <strong>bản sao Sẵn sàng</strong> trên kệ.</li>
+                                <li>Nếu tất cả bản sao đang được mượn, hệ thống sẽ báo lỗi khi xác nhận.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBMIT BUTTON -->
+                <div class="text-end mt-4">
+                    <button type="submit" class="btn-submit-borrow">
+                        <i class="fas fa-check-circle me-2"></i>XÁC NHẬN &amp; PHÁT PHIẾU MƯỢN
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#addBookBtn').click(function() {
+            var clone = $('.book-row:first').clone();
+            clone.find('select').val('');
+            clone.find('.remove-btn').prop('disabled', false);
+            $('#bookSelectionContainer').append(clone);
+        });
+
+        $(document).on('click', '.remove-btn', function() {
+            if ($('.book-row').length > 1) {
+                $(this).closest('.book-row').remove();
+            }
+        });
+    });
+</script>
+</body>
+</html>

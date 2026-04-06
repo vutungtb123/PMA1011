@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Danh Mục Sách</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* NAV */
+        .top-bar {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            padding: 0.9rem 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+        }
+        .brand { color: #fff; font-weight: 700; font-size: 1.15rem; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .brand i { color: #818cf8; }
+        .btn-nav { background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.15);
+                   border-radius: 10px; padding: 6px 16px; text-decoration: none; font-size: 0.88rem; transition: all 0.2s; }
+        .btn-nav:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+        /* PAGE HEADER */
+        .page-header { padding: 1.8rem 0 1rem; display: flex; align-items: center; justify-content: space-between; }
+        .page-header h1 { font-size: 1.55rem; font-weight: 800; margin: 0; }
+
+        /* STATS PILLS */
+        .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;
+        }
+        .pill-total { background: #ede9fe; color: #4f46e5; }
+        .pill-selected { background: #fef3c7; color: #d97706; display: none; }
+
+        /* CARD */
+        .main-card {
+            background: var(--surface); border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06); overflow: hidden;
+        }
+        .card-top {
+            padding: 1rem 1.4rem;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-top h5 { margin: 0; font-weight: 700; font-size: 0.95rem; }
+
+        /* TABLE */
+        .cat-table { margin: 0; }
+        .cat-table thead th {
+            background: #f8fafc; color: var(--muted);
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; padding: 10px 16px; border-bottom: 2px solid var(--border);
+        }
+        .cat-table tbody tr {
+            transition: background 0.15s; cursor: pointer; border-bottom: 1px solid var(--border);
+        }
+        .cat-table tbody tr:last-child { border-bottom: none; }
+        .cat-table tbody tr:hover { background: #f5f3ff; }
+        .cat-table tbody tr.row-selected { background: #ede9fe !important; }
+        .cat-table td { padding: 12px 16px; vertical-align: middle; font-size: 0.9rem; }
+        .id-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 8px;
+            background: #f1f5f9; color: var(--muted); font-weight: 700; font-size: 0.85rem;
+        }
+        .id-badge.selected-badge { background: #ede9fe; color: #4f46e5; }
+        .cat-name { font-weight: 600; }
+        .cat-desc { color: var(--muted); font-size: 0.85rem;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .click-hint { font-size: 0.72rem; color: #a78bfa; font-weight: 600; display: none; }
+        .cat-table tbody tr:hover .click-hint { display: inline; }
+
+        /* DELETE BTN */
+        .btn-del {
+            width: 32px; height: 32px; border-radius: 8px; border: none;
+            background: #fef2f2; color: var(--danger);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.82rem; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-del:hover { background: #fee2e2; transform: scale(1.05); }
+
+        /* FORM CARD */
+        .form-card {
+            background: var(--surface); border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06); overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+        .form-card.edit-mode { box-shadow: 0 4px 24px rgba(99,102,241,0.18); border-color: #a5b4fc; }
+        .form-card-header {
+            padding: 1rem 1.4rem;
+            display: flex; align-items: center; gap: 10px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff; transition: background 0.3s;
+        }
+        .form-card-header.edit-mode {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+        .form-card-header h5 { margin: 0; font-weight: 700; font-size: 0.95rem; }
+        .form-body { padding: 1.4rem; }
+
+        .form-label-custom { font-weight: 600; font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .form-control-custom {
+            border: 2px solid var(--border); border-radius: 12px;
+            padding: 10px 14px; font-size: 0.92rem; width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+            font-family: 'Inter', sans-serif; background: #f8fafc;
+        }
+        .form-control-custom:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); background: #fff; }
+        .form-control-custom.edit-focus:focus { border-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,0.12); }
+
+        /* BUTTONS */
+        .btn-save-new {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff; border: none; border-radius: 12px;
+            padding: 11px 0; font-weight: 700; font-size: 0.92rem;
+            width: 100%; cursor: pointer; transition: all 0.25s;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.28);
+        }
+        .btn-save-new:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,185,129,0.38); }
+        .btn-update {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+            color: #fff; border: none; border-radius: 12px;
+            padding: 11px 0; font-weight: 700; font-size: 0.92rem;
+            width: 100%; cursor: pointer; transition: all 0.25s;
+            box-shadow: 0 4px 12px rgba(245,158,11,0.28);
+        }
+        .btn-update:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.38); }
+        .btn-cancel-edit {
+            background: #f1f5f9; color: var(--muted); border: none; border-radius: 12px;
+            padding: 9px 0; font-weight: 600; font-size: 0.88rem;
+            width: 100%; cursor: pointer; transition: all 0.2s; margin-top: 8px;
+        }
+        .btn-cancel-edit:hover { background: #e2e8f0; color: var(--text); }
+
+        /* EDIT MODE INDICATOR */
+        .editing-row-banner {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1px solid #fcd34d; border-radius: 12px;
+            padding: 8px 14px; margin-bottom: 1rem;
+            font-size: 0.82rem; color: #92400e; font-weight: 600;
+            display: none; align-items: center; gap: 8px;
+        }
+
+        /* FLASH */
+        .flash-success {
+            background: #f0fdf4; border: 1px solid #86efac; border-radius: 14px;
+            padding: 0.85rem 1.2rem; color: #166534; font-weight: 600; font-size: 0.88rem;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;
+        }
+        .flash-error {
+            background: #fef2f2; border: 1px solid #fca5a5; border-radius: 14px;
+            padding: 0.85rem 1.2rem; color: #991b1b; font-weight: 600; font-size: 0.88rem;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;
+        }
+
+        /* EMPTY STATE */
+        .empty-state { padding: 2.5rem; text-align: center; color: var(--muted); }
+    </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="top-bar">
+    <a href="/admin/book" class="brand">
+        <i class="fas fa-layer-group"></i>
+        Quản Lý Thư Viện
+    </a>
+    <a href="/admin/book" class="btn-nav">
+        <i class="fas fa-arrow-left me-1"></i> Trang chủ Admin
+    </a>
+</div>
+
+<div class="container-lg py-4">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <h1><i class="fas fa-tags me-2" style="color: var(--primary);"></i>Quản Lý Danh Mục Sách</h1>
+    </div>
+
+    <!-- FLASH MESSAGES -->
+    <div th:if="${message}" class="flash-success">
+        <i class="fas fa-check-circle fa-lg"></i>
+        <span th:text="${message}"></span>
+    </div>
+    <div th:if="${error}" class="flash-error">
+        <i class="fas fa-exclamation-circle fa-lg"></i>
+        <span th:text="${error}"></span>
+    </div>
+
+    <!-- STATS -->
+    <div class="stat-pills">
+        <span class="stat-pill pill-total">
+            <i class="fas fa-layer-group"></i>
+            Tổng: <strong th:text="${#lists.size(categories)}">0</strong> danh mục
+        </span>
+        <span class="stat-pill pill-selected" id="selectedPill">
+            <i class="fas fa-pen"></i>
+            Đang sửa: <strong id="selectedName">—</strong>
+        </span>
+    </div>
+
+    <div class="row g-4">
+        <!-- TABLE -->
+        <div class="col-lg-8">
+            <div class="main-card">
+                <div class="card-top">
+                    <h5><i class="fas fa-list me-2" style="color:var(--primary);"></i>Danh Sách Danh Mục</h5>
+                    <span style="font-size:0.8rem;color:var(--muted);">
+                        <i class="fas fa-hand-pointer me-1"></i>Nhấp vào hàng để chỉnh sửa
+                    </span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table cat-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">ID</th>
+                                <th>Tên Danh Mục</th>
+                                <th>Mô Tả</th>
+                                <th style="width:60px;text-align:center;">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${#lists.isEmpty(categories)}">
+                                <td colspan="4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-inbox fa-3x mb-3" style="opacity:0.2;"></i>
+                                        <div>Chưa có danh mục nào. Hãy thêm danh mục mới!</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:each="cat : ${categories}"
+                                th:id="'row-' + ${cat.categoryId}"
+                                th:attr="data-id=${cat.categoryId}, data-name=${cat.categoryName}, data-desc=${cat.description}"
+                                onclick="selectRow(this)">
+                                <td>
+                                    <span class="id-badge" th:id="'badge-' + ${cat.categoryId}"
+                                          th:text="${cat.categoryId}"></span>
+                                </td>
+                                <td>
+                                    <div class="cat-name" th:text="${cat.categoryName}"></div>
+                                    <span class="click-hint"><i class="fas fa-pen me-1"></i>Nhấp để sửa</span>
+                                </td>
+                                <td>
+                                    <div class="cat-desc" th:text="${cat.description != null ? cat.description : '—'}"></div>
+                                </td>
+                                <td onclick="event.stopPropagation();" style="text-align:center;">
+                                    <button type="button" class="btn-del"
+                                            title="Xóa danh mục này"
+                                            th:attr="data-item-name=${cat.categoryName}, data-form-action=@{'/admin/category/delete/' + ${cat.categoryId}}"
+                                            onclick="openDeleteModal(this, 'danh mục')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- FORM -->
+        <div class="col-lg-4">
+            <div class="form-card" id="formCard">
+                <div class="form-card-header" id="formHeader">
+                    <i class="fas fa-plus-circle fa-lg"></i>
+                    <h5 id="formTitle">Thêm Danh Mục Mới</h5>
+                </div>
+                <div class="form-body">
+
+                    <!-- EDIT MODE BANNER -->
+                    <div class="editing-row-banner" id="editingBanner">
+                        <i class="fas fa-pen-nib"></i>
+                        <span>Đang chỉnh sửa: <strong id="bannerName"></strong></span>
+                    </div>
+
+                    <form th:action="@{/admin/category/save}" method="post" id="categoryForm">
+                        <!-- Hidden: categoryId (0 = thêm mới, >0 = cập nhật) -->
+                        <!-- Để trống = thêm mới; có ID = cập nhật -->
+                        <input type="hidden" name="categoryId" id="hiddenId" value="">
+
+                        <div class="mb-3">
+                            <label class="form-label-custom">Tên Danh Mục <span style="color:#ef4444;">*</span></label>
+                            <input type="text" class="form-control-custom" name="categoryName" id="inputName"
+                                   placeholder="VD: Khoa học, Văn học…" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label-custom">Mô Tả</label>
+                            <textarea class="form-control-custom" name="description" id="inputDesc"
+                                      rows="3" placeholder="Mô tả ngắn về danh mục…"></textarea>
+                        </div>
+
+                        <!-- Nút thay đổi theo chế độ -->
+                        <button type="submit" class="btn-save-new" id="btnSubmit">
+                            <i class="fas fa-plus me-2"></i>THÊM DANH MỤC
+                        </button>
+                        <button type="button" class="btn-cancel-edit" id="btnCancel"
+                                onclick="cancelEdit()" style="display:none;">
+                            <i class="fas fa-times me-1"></i>Hủy, quay về thêm mới
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- TIP CARD -->
+            <div class="mt-3 p-3 rounded-3" style="background:#fafafa;border:1px solid var(--border);font-size:0.82rem;color:var(--muted);">
+                <div class="fw-bold mb-1" style="color:var(--text);"><i class="fas fa-lightbulb text-warning me-1"></i>Hướng dẫn</div>
+                <ul class="mb-0 ps-3" style="line-height:1.9;">
+                    <li>Nhấp vào <strong>bất kỳ hàng</strong> nào trong bảng để chỉnh sửa danh mục đó.</li>
+                    <li>Form sẽ tự fill dữ liệu và nút đổi thành <strong style="color:#d97706;">Cập Nhật</strong>.</li>
+                    <li>Nhấn <em>"Hủy"</em> để quay về chế độ thêm mới.</li>
+                    <li>Không thể xóa danh mục đang có sách liên kết.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- ===== DELETE CONFIRM MODAL ===== -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content" style="border-radius:20px;border:none;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
+            <div style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:2rem;text-align:center;">
+                <div style="width:72px;height:72px;background:rgba(255,255,255,0.18);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.8rem;">
+                    <i class="fas fa-trash-alt" style="font-size:2rem;color:#fff;"></i>
+                </div>
+                <h5 style="color:#fff;font-weight:800;margin:0;font-size:1.15rem;">Xác Nhận Xóa Vĩnh Viễn?</h5>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p style="color:#374151;font-size:0.95rem;margin-bottom:0.3rem;">
+                    Bạn đang xóa <span id="modalTypeLabel" style="font-weight:600;"></span>:
+                </p>
+                <div id="modalItemName" style="display:inline-block;background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;border-radius:10px;padding:6px 18px;font-weight:700;font-size:0.95rem;margin:0.4rem 0 1rem;max-width:100%;word-break:break-word;">—</div>
+                <p style="color:#6b7280;font-size:0.87rem;margin-bottom:1.5rem;">
+                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                    Hành động này <strong>không thể hoàn tác</strong>.
+                </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" style="background:#f9fafb;color:#374151;border:1px solid #e5e7eb;border-radius:12px;padding:10px 24px;font-weight:600;font-size:0.9rem;cursor:pointer;" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left me-1"></i>Hủy bỏ
+                    </button>
+                    <button type="button" id="confirmDeleteBtn" style="background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:12px;padding:10px 28px;font-weight:700;font-size:0.9rem;cursor:pointer;box-shadow:0 4px 14px rgba(220,38,38,0.3);">
+                        <i class="fas fa-trash me-1"></i>Xóa vĩnh viễn
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form ẩn để submit POST xóa -->
+<form id="deleteForm" method="post" style="display:none;">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+</form>
+
+<script>
+let currentEditId = null;
+
+// Khi click vào 1 hàng trong bảng
+function selectRow(row) {
+    const id   = parseInt(row.dataset.id);
+    const name = row.dataset.name || '';
+    const desc = row.dataset.desc || '';
+
+    // Bỏ highlight hàng cũ
+    document.querySelectorAll('.cat-table tbody tr').forEach(r => {
+        r.classList.remove('row-selected');
+        const badge = r.querySelector('.id-badge');
+        if (badge) badge.classList.remove('selected-badge');
+    });
+
+    // Highlight hàng mới
+    row.classList.add('row-selected');
+    const badge = document.getElementById('badge-' + id);
+    if (badge) badge.classList.add('selected-badge');
+
+    currentEditId = id;
+
+    // Fill form
+    document.getElementById('hiddenId').value   = id;   // số nguyên, JPA sẽ MERGE
+    document.getElementById('inputName').value  = name;
+    document.getElementById('inputDesc').value  = desc;
+
+    // Chuyển sang chế độ EDIT
+    setEditMode(true, name);
+
+    // Scroll lên form trên mobile
+    document.getElementById('formCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function setEditMode(isEdit, name) {
+    const formCard   = document.getElementById('formCard');
+    const header     = document.getElementById('formHeader');
+    const title      = document.getElementById('formTitle');
+    const btn        = document.getElementById('btnSubmit');
+    const btnCancel  = document.getElementById('btnCancel');
+    const banner     = document.getElementById('editingBanner');
+    const bannerName = document.getElementById('bannerName');
+    const pillSel    = document.getElementById('selectedPill');
+    const selName    = document.getElementById('selectedName');
+    const inputName  = document.getElementById('inputName');
+    const inputDesc  = document.getElementById('inputDesc');
+
+    if (isEdit) {
+        formCard.classList.add('edit-mode');
+        header.classList.add('edit-mode');
+        header.querySelector('i').className = 'fas fa-pen-to-square fa-lg';
+        title.textContent = 'Chỉnh Sửa Danh Mục';
+        btn.className = 'btn-update';
+        btn.innerHTML = '<i class="fas fa-floppy-disk me-2"></i>CẬP NHẬT DANH MỤC';
+        btnCancel.style.display = 'block';
+        banner.style.display = 'flex';
+        bannerName.textContent = name;
+        pillSel.style.display = 'flex';
+        selName.textContent = name;
+        inputName.classList.add('edit-focus');
+        inputDesc.classList.add('edit-focus');
+        inputName.focus();
+    } else {
+        formCard.classList.remove('edit-mode');
+        header.classList.remove('edit-mode');
+        header.querySelector('i').className = 'fas fa-plus-circle fa-lg';
+        title.textContent = 'Thêm Danh Mục Mới';
+        btn.className = 'btn-save-new';
+        btn.innerHTML = '<i class="fas fa-plus me-2"></i>THÊM DANH MỤC';
+        btnCancel.style.display = 'none';
+        banner.style.display = 'none';
+        pillSel.style.display = 'none';
+        inputName.classList.remove('edit-focus');
+        inputDesc.classList.remove('edit-focus');
+    }
+}
+
+function cancelEdit() {
+    currentEditId = null;
+    document.getElementById('hiddenId').value  = '';   // rỗng = thêm mới
+    document.getElementById('inputName').value = '';
+    document.getElementById('inputDesc').value = '';
+
+    // Bỏ highlight
+    document.querySelectorAll('.cat-table tbody tr').forEach(r => {
+        r.classList.remove('row-selected');
+        const badge = r.querySelector('.id-badge');
+        if (badge) badge.classList.remove('selected-badge');
+    });
+
+    setEditMode(false, '');
+}
+
+// ===== DELETE MODAL =====
+let _deleteModal;
+function openDeleteModal(btn, typeLabel) {
+    const itemName   = btn.getAttribute('data-item-name') || '(không rõ)';
+    const formAction = btn.getAttribute('data-form-action');
+
+    document.getElementById('modalTypeLabel').textContent = typeLabel;
+    document.getElementById('modalItemName').textContent  = itemName;
+    document.getElementById('deleteForm').action          = formAction;
+
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        document.getElementById('deleteForm').submit();
+    };
+
+    if (!_deleteModal) _deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    _deleteModal.show();
+}
+</script>
+</body>
+</html>

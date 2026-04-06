@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lỗi | Thư Viện Trường</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .error-icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            display: block;
+            text-align: center;
+        }
+        .error-code {
+            font-size: 64px;
+            font-weight: 800;
+            text-align: center;
+            background: linear-gradient(135deg, #EF4444, #F59E0B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+        .auth-title { text-align: center; }
+        .auth-subtitle { text-align: center; }
+        .btn-primary { max-width: 200px; margin: 0 auto; display: block; }
+    </style>
+</head>
+<body>
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <span class="error-icon">⚠️</span>
+        <div class="error-code" th:text="${errorCode} ?: '500'">500</div>
+        <h1 class="auth-title">Ôi, có lỗi xảy ra!</h1>
+        <p class="auth-subtitle" style="margin-bottom:28px;"
+           th:text="${errorMessage} ?: 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.'">
+        </p>
+        <a th:href="@{/login}" class="btn-primary" style="text-decoration:none; text-align:center;">
+            <span>Về trang đăng nhập</span>
+        </a>
+    </div>
+</div>
+</body>
+</html>

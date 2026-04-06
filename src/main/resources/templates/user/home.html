@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thư Viện Trường Học</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f59e0b;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-surface: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* ═══ NAVBAR ═══ */
+        .navbar-custom {
+            background: rgba(15,23,42,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.8rem 0;
+        }
+        .navbar-custom .navbar-brand {
+            font-weight: 800; font-size: 1.4rem;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .navbar-custom .navbar-brand i { -webkit-text-fill-color: var(--accent); margin-right: 8px; }
+        .nav-link-custom { color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: color 0.3s; margin-right: 1.5rem; cursor: pointer; }
+        .nav-link-custom:hover, .nav-link-custom.active { color: var(--primary-light); }
+        .custom-dropdown { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-top: 10px; }
+        .custom-dropdown .dropdown-item { color: var(--text-primary); transition: all 0.2s; padding: 8px 16px; font-size: 0.9rem; }
+        .custom-dropdown .dropdown-item:hover, .custom-dropdown .dropdown-item.active { background-color: rgba(99,102,241,0.2); color: var(--primary-light); }
+        .custom-dropdown .dropdown-divider { border-top-color: var(--border); }
+        .nav-user-info { display: flex; align-items: center; gap: 12px; }
+        .nav-user-info .user-name { color: var(--text-secondary); font-size: 0.9rem; }
+        .nav-user-info .user-name strong { color: var(--text-primary); }
+        .btn-logout {
+            background: rgba(239,68,68,0.15); color: #f87171;
+            border: 1px solid rgba(239,68,68,0.3); border-radius: 10px;
+            padding: 6px 16px; font-size: 0.85rem; font-weight: 500; transition: all 0.3s;
+        }
+        .btn-logout:hover { background: rgba(239,68,68,0.3); color: #fca5a5; transform: translateY(-1px); }
+
+        /* ═══ HERO ═══ */
+        .hero-section { padding: 2.5rem 0 0.5rem; text-align: center; }
+        .hero-section h1 {
+            font-size: 2.5rem; font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, var(--primary-light) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero-section p { color: var(--text-secondary); font-size: 1.05rem; max-width: 500px; margin: 0.5rem auto 0; }
+
+        /* ═══ SEARCH ═══ */
+        .search-wrapper { max-width: 560px; margin: 1.8rem auto 2rem; position: relative; }
+        .search-wrapper .icon-search {
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            color: var(--text-secondary); font-size: 1.1rem; transition: color 0.3s;
+        }
+        .search-wrapper input {
+            width: 100%; padding: 15px 50px 15px 52px; border-radius: 16px;
+            border: 2px solid var(--border); background: var(--bg-card);
+            color: var(--text-primary); font-size: 1rem; font-family: 'Inter', sans-serif;
+            transition: all 0.3s; outline: none;
+        }
+        .search-wrapper input::placeholder { color: var(--text-secondary); }
+        .search-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.15); }
+        .search-spinner { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); display: none; }
+        .search-spinner.active { display: block; }
+        .search-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index: 1000;
+            overflow: hidden; display: none;
+        }
+        .search-dropdown.show { display: block; }
+        .search-overlay-item {
+            display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+            text-decoration: none; color: var(--text-primary); transition: background 0.2s;
+            border-bottom: 1px solid var(--border);
+        }
+        .search-overlay-item:last-child { border-bottom: none; }
+        .search-overlay-item:hover { background: rgba(99,102,241,0.15); color: var(--text-primary); }
+        .search-overlay-img { width: 40px; height: 56px; border-radius: 4px; object-fit: cover; background: var(--bg-surface); }
+        .search-overlay-info { flex: 1; overflow: hidden; }
+        .search-overlay-title { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+        .search-overlay-author { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+        .search-overlay-empty { padding: 16px; text-align: center; color: var(--text-secondary); font-size: 0.95rem; }
+        .search-overlay-more { 
+            display: block; padding: 12px; text-align: center; background: rgba(99,102,241,0.1); 
+            color: var(--primary-light); font-weight: 500; text-decoration: none; transition: background 0.2s;
+        }
+        .search-overlay-more:hover { background: rgba(99,102,241,0.25); color: var(--primary-light); }
+
+        /* ═══ BOOK CARDS ═══ */
+        .book-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 22px; margin-bottom: 2.5rem;
+        }
+        @media (max-width: 992px) { .book-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 576px) { .book-grid { grid-template-columns: 1fr; } }
+
+        .book-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 18px; overflow: hidden; cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+            text-decoration: none; color: inherit; display: block;
+        }
+        .book-card:hover {
+            transform: translateY(-6px); border-color: var(--primary);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5), 0 0 40px rgba(99,102,241,0.1);
+            color: inherit; text-decoration: none;
+        }
+        .book-card-img { position: relative; width: 100%; height: 260px; overflow: hidden; background: var(--bg-surface); }
+        .book-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        .book-card:hover .book-card-img img { transform: scale(1.06); }
+        .book-card-img .no-image { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary); font-size: 3rem; }
+        .book-card-img .badge-copies {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(15,23,42,0.8); backdrop-filter: blur(6px);
+            border: 1px solid var(--border); color: var(--accent);
+            font-size: 0.72rem; font-weight: 600; padding: 4px 9px; border-radius: 8px;
+        }
+        .book-card-body { padding: 14px 16px 16px; }
+        .book-card-body .book-title {
+            font-size: 0.95rem; font-weight: 700; margin-bottom: 5px; line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .book-card-body .book-author { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 8px; }
+        .book-card-body .book-author i { margin-right: 4px; color: var(--primary-light); }
+        .book-card-body .book-categories { display: flex; flex-wrap: wrap; gap: 5px; }
+        .badge-cat {
+            background: rgba(99,102,241,0.12); color: var(--primary-light);
+            border: 1px solid rgba(99,102,241,0.25); font-size: 0.7rem;
+            font-weight: 500; padding: 2px 8px; border-radius: 6px;
+        }
+
+        /* ═══ PAGINATION ═══ */
+        .pagination-wrapper { display: flex; justify-content: center; padding-bottom: 3rem; }
+        .pagination-custom { display: flex; gap: 8px; list-style: none; }
+        .pagination-custom li a, .pagination-custom li span {
+            display: flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px; border-radius: 12px;
+            font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.3s;
+            border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary);
+        }
+        .pagination-custom li a:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-2px); }
+        .pagination-custom li.active span { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; border-color: var(--primary); box-shadow: 0 4px 15px rgba(99,102,241,0.4); }
+        .pagination-custom li.disabled span { opacity: 0.4; cursor: not-allowed; }
+
+        /* ═══ EMPTY ═══ */
+        .empty-state { text-align: center; padding: 4rem 0; }
+        .empty-state i { font-size: 4rem; color: var(--bg-surface); margin-bottom: 1rem; }
+        .empty-state h4 { color: var(--text-secondary); font-weight: 600; }
+        .empty-state p { color: var(--text-secondary); opacity: 0.7; }
+
+        /* ═══ ANIMATION ═══ */
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        .book-card { animation: fadeInUp 0.45s ease forwards; opacity: 0; }
+        .book-card:nth-child(1) { animation-delay:.03s } .book-card:nth-child(2) { animation-delay:.06s }
+        .book-card:nth-child(3) { animation-delay:.09s } .book-card:nth-child(4) { animation-delay:.12s }
+        .book-card:nth-child(5) { animation-delay:.15s } .book-card:nth-child(6) { animation-delay:.18s }
+        .book-card:nth-child(7) { animation-delay:.21s } .book-card:nth-child(8) { animation-delay:.24s }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-custom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <a class="navbar-brand" href="/dashboard"><i class="fas fa-book-open"></i>SchoolLib</a>
+            <div class="ms-4 d-flex align-items-center">
+                <a href="/dashboard" class="nav-link-custom" th:classappend="${currentCategoryId == null} ? 'active'"><i class="fas fa-home me-1"></i> Trang chủ</a>
+                
+                <!-- Category Dropdown -->
+                <div class="dropdown me-4">
+                    <a class="nav-link-custom dropdown-toggle" href="#" role="button" id="catDropdown" data-bs-toggle="dropdown" aria-expanded="false" th:classappend="${currentCategoryId != null} ? 'active'">
+                        <i class="fas fa-tags me-1"></i> Thể loại
+                    </a>
+                    <ul class="dropdown-menu custom-dropdown" aria-labelledby="catDropdown">
+                        <li><a class="dropdown-item" href="/dashboard" th:classappend="${currentCategoryId == null} ? 'active'">Tất cả sách</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li th:each="cat : ${allCategories}">
+                            <a class="dropdown-item" th:href="@{/dashboard(categoryId=${cat.categoryId})}"
+                               th:text="${cat.categoryName}"
+                               th:classappend="${currentCategoryId == cat.categoryId} ? 'active'">Tên thể loại</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <a href="/my-books" class="nav-link-custom" style="margin-right: 0;"><i class="fas fa-bookmark me-1"></i> Sách của tôi</a>
+            </div>
+        </div>
+        <div class="nav-user-info">
+            <span class="user-name" th:if="${#authentication.principal instanceof T(com.example.school_library_system.security.CustomUserDetails)}">
+                <i class="fas fa-user-circle me-1"></i>
+                Xin chào, <strong th:text="${#authentication.principal.user.fullName}">User</strong>
+            </span>
+            <form th:action="@{/logout}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-logout"><i class="fas fa-sign-out-alt me-1"></i> Đăng xuất</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-section">
+    <div class="container">
+        <h1>Kho Sách Thư Viện</h1>
+        <p>Khám phá kho tàng tri thức — tìm kiếm và mượn sách yêu thích</p>
+    </div>
+</div>
+
+<!-- SEARCH -->
+<div class="container">
+    <div class="search-wrapper">
+        <i class="fas fa-search icon-search"></i>
+        <input type="text" id="searchInput" placeholder="Tìm kiếm tên sách hoặc tên tác giả..." th:value="${keyword}" autocomplete="off">
+        <div class="search-spinner" id="searchSpinner">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        </div>
+        <div class="search-dropdown" id="searchDropdown">
+            <!-- Results injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- BOOK GRID -->
+<div class="container" id="bookContainer">
+    <div class="book-grid" th:if="${!bookPage.isEmpty()}">
+        <a class="book-card" th:each="book : ${bookPage.content}" th:href="@{'/book/' + ${book.bookId}}">
+            <div class="book-card-img">
+                <img th:if="${book.coverImage != null && !book.coverImage.isEmpty()}" th:src="${book.coverImage}" alt="Bìa sách">
+                <div th:if="${book.coverImage == null || book.coverImage.isEmpty()}" class="no-image"><i class="fas fa-book"></i></div>
+                <span class="badge-copies" th:if="${book.copies != null}">
+                    <i class="fas fa-layer-group me-1"></i><span th:text="${book.copies.size()}">0</span> bản
+                </span>
+            </div>
+            <div class="book-card-body">
+                <div class="book-title" th:text="${book.title}">Tên sách</div>
+                <div class="book-author" th:if="${book.author != null && !book.author.isEmpty()}">
+                    <i class="fas fa-pen-nib"></i><span th:text="${book.author}">Tác giả</span>
+                </div>
+                <div class="book-categories">
+                    <span class="badge-cat" th:each="cat : ${book.categories}" th:text="${cat.categoryName}">Danh mục</span>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Empty -->
+    <div class="empty-state" th:if="${bookPage.isEmpty()}">
+        <i class="fas fa-search"></i>
+        <h4>Không tìm thấy sách nào</h4>
+        <p th:if="${keyword != null && !keyword.isEmpty()}">Thử tìm với từ khóa khác nhé!</p>
+        <p th:if="${keyword == null || keyword.isEmpty()}">Thư viện chưa có sách nào trong hệ thống.</p>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination-wrapper" th:if="${totalPages > 1}">
+        <ul class="pagination-custom">
+            <li th:classappend="${currentPage == 0} ? 'disabled'">
+                <a th:if="${currentPage > 0}" th:href="@{/dashboard(keyword=${keyword}, categoryId=${currentCategoryId}, page=${currentPage - 1})}"><i class="fas fa-chevron-left"></i></a>
+                <span th:if="${currentPage == 0}"><i class="fas fa-chevron-left"></i></span>
+            </li>
+            <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}" th:classappend="${i == currentPage} ? 'active'">
+                <a th:if="${i != currentPage}" th:href="@{/dashboard(keyword=${keyword}, categoryId=${currentCategoryId}, page=${i})}" th:text="${i + 1}">1</a>
+                <span th:if="${i == currentPage}" th:text="${i + 1}">1</span>
+            </li>
+            <li th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                <a th:if="${currentPage < totalPages - 1}" th:href="@{/dashboard(keyword=${keyword}, categoryId=${currentCategoryId}, page=${currentPage + 1})}"><i class="fas fa-chevron-right"></i></a>
+                <span th:if="${currentPage == totalPages - 1}"><i class="fas fa-chevron-right"></i></span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function() {
+    const input = document.getElementById('searchInput');
+    const spinner = document.getElementById('searchSpinner');
+    const dropdown = document.getElementById('searchDropdown');
+    let timer;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const catId = urlParams.get('categoryId');
+
+    // Click outside để đóng dropdown
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+
+    // Hiện dropdown nếu bấm lại vào input mà đã có dữ liệu
+    input.addEventListener('focus', () => {
+        if (input.value.trim().length > 0 && dropdown.innerHTML.trim() !== '') {
+            dropdown.classList.add('show');
+        }
+    });
+
+    input.addEventListener('input', function() {
+        clearTimeout(timer);
+        const keyword = input.value.trim();
+        
+        if (keyword.length === 0) {
+            dropdown.classList.remove('show');
+            spinner.classList.remove('active');
+            return;
+        }
+
+        spinner.classList.add('active');
+        dropdown.classList.add('show');
+        
+        timer = setTimeout(() => {
+            let apiURL = '/api/books/search?keyword=' + encodeURIComponent(keyword);
+            if (catId) apiURL += '&categoryId=' + catId;
+
+            fetch(apiURL)
+                .then(res => res.json())
+                .then(data => {
+                    spinner.classList.remove('active');
+                    dropdown.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        dropdown.innerHTML = '<div class="search-overlay-empty">Không tìm thấy kết quả nào cho "' + keyword + '"</div>';
+                        return;
+                    }
+
+                    data.forEach(book => {
+                        const noImg = '<div style="width:40px;height:56px;background:var(--bg-surface);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:12px;border-radius:4px;"><i class="fas fa-book"></i></div>';
+                        const imgSrc = book.coverImage ? '<img src="' + book.coverImage + '" class="search-overlay-img">' : noImg;
+                        const author = book.author ? '<div class="search-overlay-author"><i class="fas fa-pen-nib me-1"></i>' + book.author + '</div>' : '';
+                        
+                        dropdown.innerHTML += `
+                            <a href="/book/${book.bookId}" class="search-overlay-item">
+                                ${imgSrc}
+                                <div class="search-overlay-info">
+                                    <div class="search-overlay-title">${book.title}</div>
+                                    ${author}
+                                </div>
+                            </a>
+                        `;
+                    });
+
+                    // Xem tất cả kết quả
+                    let searchUrl = '/dashboard?keyword=' + encodeURIComponent(keyword) + '&page=0';
+                    if (catId) searchUrl += '&categoryId=' + catId;
+                    dropdown.innerHTML += '<a href="' + searchUrl + '" class="search-overlay-more">Xem tất cả kết quả <i class="fas fa-arrow-right ms-1"></i></a>';
+                })
+                .catch(err => {
+                    console.error("Lỗi Live Search:", err);
+                    spinner.classList.remove('active');
+                });
+        }, 350);
+    });
+
+    // Bấm Enter để chuyển thẳng sang xem chế độ Grid
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            let searchUrl = '/dashboard?keyword=' + encodeURIComponent(input.value.trim()) + '&page=0';
+            if (catId) searchUrl += '&categoryId=' + catId;
+            window.location.href = searchUrl;
+        }
+    });
+
+    // Move cursor to end
+    const v = input.value; input.value = ''; input.value = v;
+})();
+</script>
+</body>
+</html>

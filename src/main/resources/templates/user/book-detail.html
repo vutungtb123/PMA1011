@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${book.title} + ' — SchoolLib'">Chi tiết sách</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1; --primary-light: #818cf8; --primary-dark: #4f46e5;
+            --accent: #f59e0b; --green: #22c55e; --green-dark: #16a34a;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-surface: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #94a3b8; --border: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
+
+        /* ═══ NAVBAR ═══ */
+        .navbar-custom {
+            background: rgba(15,23,42,0.85); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border); padding: 0.8rem 0;
+        }
+        .navbar-custom .navbar-brand {
+            font-weight: 800; font-size: 1.4rem;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .navbar-custom .navbar-brand i { -webkit-text-fill-color: var(--accent); margin-right: 8px; }
+        .btn-back {
+            background: rgba(99,102,241,0.12); color: var(--primary-light);
+            border: 1px solid rgba(99,102,241,0.3); border-radius: 10px;
+            padding: 6px 16px; font-size: 0.85rem; font-weight: 500; transition: all 0.3s; text-decoration: none;
+        }
+        .btn-back:hover { background: rgba(99,102,241,0.25); color: #a5b4fc; transform: translateY(-1px); }
+        .nav-link-custom { color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: color 0.3s; margin-left: 1.5rem; }
+        .nav-link-custom:hover, .nav-link-custom.active { color: var(--primary-light); }
+
+        /* ═══ DETAIL LAYOUT ═══ */
+        .detail-wrapper {
+            max-width: 960px; margin: 3rem auto; padding: 0 1rem;
+            display: grid; grid-template-columns: 320px 1fr; gap: 40px; align-items: start;
+        }
+        @media (max-width: 768px) { .detail-wrapper { grid-template-columns: 1fr; } }
+
+        /* ═══ COVER IMAGE ═══ */
+        .cover-container {
+            border-radius: 20px; overflow: hidden; border: 2px solid var(--border);
+            background: var(--bg-surface); position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            transition: transform 0.4s;
+        }
+        .cover-container:hover { transform: scale(1.02); }
+        .cover-container img { width: 100%; display: block; min-height: 400px; object-fit: cover; }
+        .cover-container .no-image {
+            height: 400px; display: flex; align-items: center; justify-content: center;
+            color: var(--text-secondary); font-size: 5rem;
+        }
+
+        /* ═══ BOOK INFO ═══ */
+        .book-info { padding-top: 0.5rem; }
+        .book-info .book-title {
+            font-size: 2rem; font-weight: 800; line-height: 1.3; margin-bottom: 12px;
+            background: linear-gradient(135deg, #fff, var(--primary-light));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .book-info .info-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 14px; font-size: 0.95rem;
+        }
+        .book-info .info-row .label-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+        }
+        .icon-author { background: rgba(99,102,241,0.15); color: var(--primary-light); }
+        .icon-publisher { background: rgba(245,158,11,0.15); color: var(--accent); }
+        .icon-copies { background: rgba(34,197,94,0.15); color: var(--green); }
+        .book-info .info-text { color: var(--text-secondary); }
+        .book-info .info-text strong { color: var(--text-primary); }
+
+        .categories-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 10px; }
+        .badge-cat {
+            background: rgba(99,102,241,0.12); color: var(--primary-light);
+            border: 1px solid rgba(99,102,241,0.25); font-size: 0.8rem;
+            font-weight: 500; padding: 5px 12px; border-radius: 8px;
+        }
+
+        .summary-section {
+            margin-top: 20px; padding: 20px; border-radius: 16px;
+            background: var(--bg-surface); border: 1px solid var(--border);
+        }
+        .summary-section h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; color: var(--accent); }
+        .summary-section p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; }
+
+        /* ═══ BUTTONS ═══ */
+        .action-buttons { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+        .btn-read {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px; border-radius: 14px; font-weight: 700; font-size: 0.95rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff; border: none; cursor: pointer; transition: all 0.3s; text-decoration: none;
+        }
+        .btn-read:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(99,102,241,0.4); color: #fff; }
+        .btn-borrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px; border-radius: 14px; font-weight: 700; font-size: 0.95rem;
+            background: linear-gradient(135deg, var(--green), var(--green-dark));
+            color: #fff; border: none; cursor: pointer; transition: all 0.3s; text-decoration: none;
+        }
+        .btn-borrow:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(34,197,94,0.4); color: #fff; }
+        .btn-borrow:disabled, .btn-borrow.disabled {
+            opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important;
+        }
+
+        /* ═══ ANIMATION ═══ */
+        @keyframes slideIn { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+        .cover-container { animation: slideIn 0.6s ease forwards; }
+        .book-info { animation: slideIn 0.6s ease 0.15s forwards; opacity: 0; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-custom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <a class="navbar-brand" href="/dashboard"><i class="fas fa-book-open"></i>SchoolLib</a>
+            <div class="ms-1">
+                <a href="/dashboard" class="nav-link-custom"><i class="fas fa-home me-1"></i> Trang chủ</a>
+                <a href="/my-books" class="nav-link-custom"><i class="fas fa-bookmark me-1"></i> Sách của tôi</a>
+            </div>
+        </div>
+        <a href="/dashboard" class="btn-back"><i class="fas fa-arrow-left me-1"></i> Trở về</a>
+    </div>
+</nav>
+
+<!-- DETAIL -->
+<div class="detail-wrapper">
+    <!-- Cover -->
+    <div class="cover-container">
+        <img th:if="${book.coverImage != null && !book.coverImage.isEmpty()}" th:src="${book.coverImage}" alt="Bìa sách">
+        <div th:if="${book.coverImage == null || book.coverImage.isEmpty()}" class="no-image">
+            <i class="fas fa-book"></i>
+        </div>
+    </div>
+
+    <!-- Info -->
+    <div class="book-info">
+        <h1 class="book-title" th:text="${book.title}">Tên sách</h1>
+
+        <!-- Tác giả -->
+        <div class="info-row" th:if="${book.author != null && !book.author.isEmpty()}">
+            <div class="label-icon icon-author"><i class="fas fa-pen-nib"></i></div>
+            <div class="info-text">Tác giả: <strong th:text="${book.author}">Tác giả</strong></div>
+        </div>
+
+        <!-- NXB -->
+        <div class="info-row" th:if="${book.publisher != null && !book.publisher.isEmpty()}">
+            <div class="label-icon icon-publisher"><i class="fas fa-building"></i></div>
+            <div class="info-text">Nhà xuất bản: <strong th:text="${book.publisher}">NXB</strong></div>
+        </div>
+
+        <!-- Số lượng -->
+        <div class="info-row">
+            <div class="label-icon icon-copies"><i class="fas fa-layer-group"></i></div>
+            <div class="info-text">Số bản còn sẵn:
+                <strong th:text="${availableCopies}" th:classappend="${availableCopies == 0} ? 'text-danger' : 'text-success'">0</strong>
+            </div>
+        </div>
+
+        <!-- Danh mục -->
+        <div class="categories-wrap" th:if="${book.categories != null && !book.categories.isEmpty()}">
+            <span class="badge-cat" th:each="cat : ${book.categories}" th:text="${cat.categoryName}">Danh mục</span>
+        </div>
+
+        <!-- Tóm tắt -->
+        <div class="summary-section" th:if="${book.summary != null && !book.summary.isEmpty()}">
+            <h5><i class="fas fa-align-left me-2"></i>Giới thiệu</h5>
+            <p th:text="${book.summary}">Tóm tắt nội dung sách...</p>
+        </div>
+
+        <!-- Alerts -->
+        <div th:if="${borrowSuccess}" class="alert alert-success alert-dismissible fade show mt-3" role="alert" style="border-radius: 12px; font-weight: 500;">
+            <i class="fas fa-check-circle me-2"></i> Mượn sách thành công! Vui lòng đến nhận ở thư viện.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${borrowError}" class="alert alert-danger alert-dismissible fade show mt-3" role="alert" style="border-radius: 12px; font-weight: 500;">
+            <i class="fas fa-exclamation-triangle me-2"></i> <span th:text="${borrowError}">Lỗi mượn sách</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Buttons -->
+        <div class="action-buttons">
+            <a th:href="@{'/book/' + ${book.bookId} + '/read'}" class="btn-read"
+               th:if="${book.samplePages != null && !book.samplePages.isEmpty()}">
+                <i class="fas fa-book-reader"></i> Đọc Thử
+            </a>
+            <form th:action="@{'/book/' + ${book.bookId} + '/borrow'}" method="post" style="display: inline;">
+                <button type="submit" class="btn-borrow"
+                        th:disabled="${availableCopies == 0 || alreadyBorrowed || activeBorrowCount >= maxBorrows}"
+                        th:classappend="${availableCopies == 0 || alreadyBorrowed || activeBorrowCount >= maxBorrows} ? 'disabled' : ''">
+                    <i class="fas fa-hand-holding-heart" th:if="${!alreadyBorrowed}"></i>
+                    <i class="fas fa-check-circle" th:if="${alreadyBorrowed}"></i>
+                    
+                    <span th:if="${alreadyBorrowed}">Đã mượn</span>
+                    <span th:if="${!alreadyBorrowed && activeBorrowCount >= maxBorrows}">Đạt giới hạn 5 cuốn</span>
+                    <span th:if="${!alreadyBorrowed && activeBorrowCount < maxBorrows && availableCopies == 0}">Hết sách</span>
+                    <span th:if="${!alreadyBorrowed && activeBorrowCount < maxBorrows && availableCopies > 0}">Mượn Sách</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
