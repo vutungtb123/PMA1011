@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Sử Vi Phạm &amp; Phạt — SchoolLib</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <style>
+        :root {
+            --primary: #6366f1; --primary-light: #818cf8; --accent: #f59e0b;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-surface: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #94a3b8; --border: #475569;
+            --red: #ef4444; --red-soft: rgba(239,68,68,0.12); --red-border: rgba(239,68,68,0.3);
+            --amber: #f59e0b; --amber-soft: rgba(245,158,11,0.12); --amber-border: rgba(245,158,11,0.3);
+            --green: #22c55e; --green-soft: rgba(34,197,94,0.12);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
+
+        /* ── CONTENT ── */
+        .content-wrapper { max-width: 980px; margin: 2.5rem auto; padding: 0 1.25rem; }
+
+        /* ── HEADER ── */
+        .page-header { margin-bottom: 2rem; }
+        .page-header h1 { font-size: 1.8rem; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+        .page-header h1 .icon-wrap { width: 48px; height: 48px; border-radius: 14px; background: var(--red-soft); border: 1px solid var(--red-border); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--red); flex-shrink: 0; }
+        .page-header p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px; }
+
+        /* ── SUMMARY CARDS ── */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 2rem; }
+        .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 14px; }
+        .sum-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+        .sum-icon.red    { background: var(--red-soft);   color: var(--red);   border: 1px solid var(--red-border); }
+        .sum-icon.amber  { background: var(--amber-soft); color: var(--amber); border: 1px solid var(--amber-border); }
+        .sum-icon.green  { background: var(--green-soft); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+        .sum-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sum-value { font-size: 1.3rem; font-weight: 800; margin-top: 2px; }
+        .sum-value.danger { color: var(--red); }
+        .sum-value.warning { color: var(--amber); }
+        .sum-value.success { color: var(--green); }
+
+        /* ── TIMELINE ── */
+        .timeline { position: relative; padding-left: 36px; }
+        .timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, var(--red-border), transparent); }
+
+        .timeline-item { position: relative; margin-bottom: 1.5rem; }
+        .timeline-dot { position: absolute; left: -29px; top: 18px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--bg-dark); flex-shrink: 0; }
+        .dot-late    { background: var(--amber); box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+        .dot-damaged { background: var(--red);   box-shadow: 0 0 0 3px rgba(239,68,68,0.25); }
+        .dot-fine    { background: #a855f7;       box-shadow: 0 0 0 3px rgba(168,85,247,0.25); }
+        .dot-warn    { background: var(--text-secondary); }
+
+        .vio-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.2rem 1.4rem; transition: border-color 0.2s, box-shadow 0.2s; }
+        .vio-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .vio-card.border-late    { border-left: 3px solid var(--amber); }
+        .vio-card.border-damaged { border-left: 3px solid var(--red); }
+
+        .vio-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+        .vio-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .record-chip { font-size: 0.75rem; font-weight: 700; background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 6px; padding: 2px 8px; }
+
+        .vio-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+        .badge-late    { background: var(--amber-soft); color: var(--amber); border: 1px solid var(--amber-border); }
+        .badge-damaged { background: var(--red-soft);   color: var(--red);   border: 1px solid var(--red-border); }
+
+        .book-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .book-cover { width: 38px; height: 52px; object-fit: cover; border-radius: 5px; border: 1px solid var(--border); flex-shrink: 0; }
+        .book-cover-placeholder { width: 38px; height: 52px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-surface); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); flex-shrink: 0; }
+        .book-title { font-weight: 700; font-size: 0.92rem; color: var(--text-primary); }
+        .book-barcode { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+
+        .vio-footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .fine-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; }
+        .fine-chip.has-fine { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+        .fine-chip.no-fine  { background: rgba(148,163,184,0.1); color: var(--text-secondary); border: 1px solid var(--border); font-weight: 500; }
+        .note-text { font-size: 0.82rem; color: var(--text-secondary); font-style: italic; display: flex; align-items: flex-start; gap: 6px; flex: 1; min-width: 0; }
+        .note-text i { flex-shrink: 0; margin-top: 2px; }
+
+        .date-text { font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; }
+
+        /* ── EMPTY ── */
+        .empty-state { text-align: center; padding: 4rem 2rem; }
+        .empty-icon { width: 80px; height: 80px; border-radius: 22px; background: var(--green-soft); border: 1px solid rgba(34,197,94,0.25); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--green); margin: 0 auto 1.2rem; }
+        .empty-state h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--green); }
+        .empty-state p { color: var(--text-secondary); font-size: 0.9rem; }
+
+        .total-fine-banner { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(168,85,247,0.1)); border: 1px solid rgba(239,68,68,0.3); border-radius: 16px; padding: 1rem 1.4rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .total-fine-banner .tf-label { font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .total-fine-banner .tf-amount { font-size: 1.5rem; font-weight: 800; color: var(--red); }
+        .total-fine-banner.zero-fine { background: var(--green-soft); border-color: rgba(34,197,94,0.25); }
+        .total-fine-banner.zero-fine .tf-amount { color: var(--green); }
+    </style>
+</head>
+<body>
+
+<div class="page-layout">
+
+<!-- USER SIDEBAR -->
+<aside class="user-sidebar">
+    <a class="sidebar-brand" href="/dashboard">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">SchoolLib</span><span class="brand-sub">Thư Viện Số</span></div>
+    </a>
+    <div class="sidebar-user-info" th:if="${#authentication.principal instanceof T(com.example.school_library_system.security.CustomUserDetails)}">
+        <div class="user-avatar"><i class="fas fa-user fa-sm"></i></div>
+        <div>
+            <div class="user-name-text" th:text="${#authentication.principal.user.fullName}">Độc giả</div>
+            <div class="user-role-text">Độc Giả</div>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-cat-toggle" id="catToggle">
+            <span>Thể loại</span>
+            <i class="fas fa-chevron-down chevron"></i>
+        </div>
+        <div class="sidebar-cat-menu" id="catMenu">
+            <a href="/dashboard">Tất cả sách</a>
+            <a th:each="cat : ${allCategories}"
+               th:href="@{/dashboard(categoryId=${cat.categoryId})}"
+               th:text="${cat.categoryName}">Thể loại</a>
+        </div>
+        <div class="sidebar-divider"></div>
+        <a href="/phieu-dat-cho" class="sidebar-link"><span>Phiếu Đặt Chỗ</span></a>
+        <a href="/dang-muon" class="sidebar-link"><span>Đang Mượn</span></a>
+        <a href="/lich-su-muon" class="sidebar-link"><span>Lịch Sử Mượn</span></a>
+        <a href="/lich-su-phat" class="sidebar-link warn active"><span>Vi Phạm &amp; Phạt</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout">
+                <i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="user-main">
+<div class="content-wrapper">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <h1>
+            <div class="icon-wrap"><i class="fas fa-gavel"></i></div>
+            Lịch Sử Vi Phạm &amp; Phạt
+        </h1>
+        <p>Ghi nhận toàn bộ các lần trả sách muộn, làm hỏng sách và số tiền phạt tương ứng.</p>
+    </div>
+
+    <!-- TỔNG KẾT CARDS -->
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="sum-icon red"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+                <div class="sum-label">Tổng vi phạm</div>
+                <div class="sum-value danger" th:text="${#lists.size(violationDetails)}">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="sum-icon amber"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="sum-label">Trả muộn</div>
+                <div class="sum-value warning"
+                     th:text="${#lists.size(violationDetails.?[returnPhysicalState == 'Trả muộn'])}">0</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="sum-icon red"><i class="fas fa-heart-broken"></i></div>
+            <div>
+                <div class="sum-label">Sách hư hỏng</div>
+                <div class="sum-value danger"
+                     th:text="${#lists.size(violationDetails.?[returnPhysicalState == 'Hư hỏng'])}">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TỔNG TIỀN PHẠT -->
+    <div class="total-fine-banner" th:classappend="${totalFine == 0} ? 'zero-fine' : ''">
+        <div class="tf-label">
+            <i class="fas fa-coins fa-lg"></i>
+            <div>
+                <div style="font-weight:700; color: var(--text-primary);">Tổng số tiền phạt tích lũy</div>
+                <div style="font-size:0.78rem;">Tính từ tất cả vi phạm được ghi nhận trong hệ thống</div>
+            </div>
+        </div>
+        <div class="tf-amount" th:if="${totalFine > 0}"
+             th:text="${#numbers.formatDecimal(totalFine, 0, 'COMMA', 0, 'POINT') + 'đ'}">0đ</div>
+        <div class="tf-amount" th:if="${totalFine == 0}">
+            <i class="fas fa-check-circle me-2" style="font-size:1rem;"></i>0đ
+        </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div th:if="${#lists.isEmpty(violationDetails)}" class="empty-state">
+        <div class="empty-icon"><i class="fas fa-smile-beam"></i></div>
+        <h3>Không có vi phạm nào!</h3>
+        <p>Bạn chưa có lần trả sách muộn hay làm hỏng sách nào được ghi nhận. Hãy tiếp tục phát huy!</p>
+    </div>
+
+    <!-- TIMELINE VI PHẠM -->
+    <div class="timeline" th:if="${!#lists.isEmpty(violationDetails)}">
+        <div class="timeline-item" th:each="d : ${violationDetails}">
+
+            <!-- Dot màu theo loại vi phạm -->
+            <div class="timeline-dot"
+                 th:classappend="${'Trả muộn'.equals(d.returnPhysicalState)} ? 'dot-late' : (${'Hư hỏng'.equals(d.returnPhysicalState)} ? 'dot-damaged' : (${d.assessedFine != null and d.assessedFine > 0} ? 'dot-fine' : 'dot-warn'))">
+            </div>
+
+            <!-- Card vi phạm -->
+            <div class="vio-card"
+                 th:classappend="${'Trả muộn'.equals(d.returnPhysicalState)} ? 'border-late' : (${'Hư hỏng'.equals(d.returnPhysicalState)} ? 'border-damaged' : '')">
+
+                <!-- Header: mã phiếu + loại vi phạm + ngày -->
+                <div class="vio-card-header">
+                    <div class="vio-meta">
+                        <span class="record-chip">
+                            <i class="fas fa-hashtag" style="font-size:0.65rem;"></i>
+                            Phiếu #<span th:text="${d.borrowRecord.borrowId}">-</span>
+                        </span>
+                        <span th:if="${'Trả muộn'.equals(d.returnPhysicalState)}" class="vio-badge badge-late">
+                            <i class="fas fa-clock"></i> Trả muộn hạn
+                        </span>
+                        <span th:if="${'Hư hỏng'.equals(d.returnPhysicalState)}" class="vio-badge badge-damaged">
+                            <i class="fas fa-heart-broken"></i> Sách hư hỏng
+                        </span>
+                        <span th:if="${!'Trả muộn'.equals(d.returnPhysicalState) and !'Hư hỏng'.equals(d.returnPhysicalState)}"
+                              class="vio-badge"
+                              style="background:rgba(168,85,247,0.12);color:#a855f7;border:1px solid rgba(168,85,247,0.3);">
+                            <i class="fas fa-exclamation-circle"></i> Vi phạm khác
+                        </span>
+                    </div>
+                    <!-- Ngày trả -->
+                    <div class="date-text" th:if="${d.returnDate != null}">
+                        <i class="fas fa-calendar-check me-1"></i>
+                        <span th:text="${#temporals.format(d.returnDate, 'dd/MM/yyyy HH:mm')}">-</span>
+                    </div>
+                </div>
+
+                <!-- Thông tin sách -->
+                <div class="book-row">
+                    <img th:if="${d.bookCopy.book.coverImage != null}"
+                         th:src="${d.bookCopy.book.coverImage}"
+                         class="book-cover"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="book-cover-placeholder"
+                         th:style="${d.bookCopy.book.coverImage != null} ? 'display:none' : 'display:flex'">
+                        <i class="fas fa-book fa-sm"></i>
+                    </div>
+                    <div>
+                        <div class="book-title" th:text="${d.bookCopy.book.title}">Tên sách</div>
+                        <div class="book-barcode">
+                            <i class="fas fa-barcode me-1"></i>
+                            <span th:text="${d.bookCopy.barcode}">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer: tiền phạt + ghi chú -->
+                <div class="vio-footer">
+                    <div th:if="${d.assessedFine != null and d.assessedFine > 0}"
+                         class="fine-chip has-fine">
+                        <i class="fas fa-coins"></i>
+                        Phạt: <span th:text="${#numbers.formatDecimal(d.assessedFine, 0, 'COMMA', 0, 'POINT') + 'đ'}">0đ</span>
+                    </div>
+                    <div th:if="${d.assessedFine == null or d.assessedFine == 0}"
+                         class="fine-chip no-fine">
+                        <i class="fas fa-info-circle"></i> Không có tiền phạt
+                    </div>
+
+                    <div th:if="${d.violationNote != null and !#strings.isEmpty(d.violationNote)}"
+                         class="note-text">
+                        <i class="fas fa-comment-alt-lines"></i>
+                        <span th:text="${d.violationNote}">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</div><!-- /user-main -->
+</div><!-- /page-layout -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function() {
+        const toggle = document.getElementById('catToggle');
+        const menu   = document.getElementById('catMenu');
+        if (toggle && menu) {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('open');
+                menu.classList.toggle('open');
+            });
+        }
+    })();
+</script>
+</body>
+</html>

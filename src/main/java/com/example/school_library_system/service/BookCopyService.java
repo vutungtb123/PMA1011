@@ -9,12 +9,13 @@ import com.example.school_library_system.repository.BookRepository;
 import com.example.school_library_system.repository.BorrowDetailRepository;
 import com.example.school_library_system.repository.BorrowRecordRepository;
 import com.example.school_library_system.repository.WarehouseReceiptDetailRepository;
-import com.example.school_library_system.service.WarehouseReceiptService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class BookCopyService {
@@ -42,17 +43,23 @@ public class BookCopyService {
     }
 
     public BookCopy getCopyById(Integer copyId) {
+        if (copyId == null) return null;
         return bookCopyRepository.findById(copyId).orElse(null);
     }
 
     @Transactional
     public void saveCopy(BookCopy copy) {
-        bookCopyRepository.save(copy);
+        bookCopyRepository.save(Objects.requireNonNull(copy, "BookCopy must not be null"));
     }
 
     /** Tổng số bản sao của sách (mọi trạng thái) */
     public long countAllCopiesByBookId(Integer bookId) {
         return bookCopyRepository.countByBookBookId(bookId);
+    }
+
+    /** Đếm bản sao đang ở trạng thái Bảo trì (hỏng nặng/mất) */
+    public long countDamagedCopiesByBookId(Integer bookId) {
+        return bookCopyRepository.countByBookBookIdAndPhysicalStatus(bookId, "Bảo trì");
     }
 
     /** Kiểm tra mã vạch đã tồn tại chưa */
@@ -67,20 +74,16 @@ public class BookCopyService {
      *
      * @param bookId   ID sách cần tạo bản sao
      * @param quantity Số lượng bản sao cần tạo
-     * @return Số lượng bản sao đả tạo thành công
+     * @return Danh sách barcode của các bản sao đã tạo thành công
      */
     @Transactional
-    public int addBulkCopies(Integer bookId, int quantity) {
+    public List<String> addBulkCopies(Integer bookId, int quantity) {
+        Objects.requireNonNull(bookId, "bookId must not be null");
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sách với ID: " + bookId));
 
-        // === GATE 1: Kiểm tra phiếu nhập kho ===
-        // Bước 1: kiểm tra theo BookID
+        // === GATE 1: Kiểm tra phiếu nhập kho (CHỈ theo BookID — không fallback title) ===
         boolean hasReceipt = warehouseReceiptDetailRepository.existsByBookBookId(bookId);
-        // Bước 2: fallback theo tên sách
-        if (!hasReceipt && book.getTitle() != null) {
-            hasReceipt = warehouseReceiptDetailRepository.existsByBookTitleIgnoreCase(book.getTitle());
-        }
         if (!hasReceipt) {
             throw new IllegalStateException(
                 "Sách \"" + book.getTitle() + "\" chưa có phiếu nhập kho. " +
@@ -102,10 +105,10 @@ public class BookCopyService {
             );
         }
 
-        int created = 0;
+        List<String> createdBarcodes = new ArrayList<>();
         for (int i = 0; i < quantity; i++) {
             // Số thứ tự = tổng bản sao hiện có + vị trí trong vòng lặp
-            long currentCount = bookCopyRepository.countByBookBookId(bookId) + created + 1;
+            long currentCount = bookCopyRepository.countByBookBookId(bookId) + createdBarcodes.size() + 1;
 
             // Sinh barcode duy nhất — retry nếu cực hiếm UUID trùng
             String barcode;
@@ -122,9 +125,9 @@ public class BookCopyService {
             copy.setBarcode(barcode);
             copy.setPhysicalStatus("Sẵn sàng");
             bookCopyRepository.save(copy);
-            created++;
+            createdBarcodes.add(barcode);
         }
-        return created;
+        return createdBarcodes;
     }
 
     @Transactional
@@ -153,7 +156,7 @@ public class BookCopyService {
             // Lưu lại đơn
             borrowRecordRepository.save(record);
 
-            // TODO: Gửi email giả định
+            // NOTE: Email notification is currently simulated via console output
             System.out.println("====== SYSTEM NOTIFICATION ======");
             System.out.println("Email sent to: " + record.getUser().getEmail());
             System.out.println("Subject: Lệnh mượn sách đã bị hủy!");
@@ -164,6 +167,7 @@ public class BookCopyService {
 
     @Transactional
     public void deleteCopy(Integer copyId) {
+        if (copyId == null) return;
         bookCopyRepository.deleteById(copyId);
     }
 }

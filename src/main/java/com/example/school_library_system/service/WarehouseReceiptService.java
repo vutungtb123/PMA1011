@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class WarehouseReceiptService {
@@ -49,9 +50,10 @@ public class WarehouseReceiptService {
                     );
                 }
 
-                Book book = bookRepository.findById(dDto.getBookId())
+                Integer bookId = Objects.requireNonNull(dDto.getBookId());
+                Book book = bookRepository.findById(bookId)
                         .orElseThrow(() -> new RuntimeException(
-                            "Không tìm thấy sách ID=" + dDto.getBookId()
+                            "Không tìm thấy sách ID=" + bookId
                         ));
 
                 WarehouseReceiptDetail detail = new WarehouseReceiptDetail();
@@ -83,38 +85,25 @@ public class WarehouseReceiptService {
     }
 
     public WarehouseReceipt getReceiptById(Integer id) {
+        if (id == null) return null;
         return repository.findById(id).orElse(null);
     }
 
     /**
-     * Kiểm tra sách đã có phiếu nhập kho chưa (dùng cho bulk-copies validation).
-     * Kiểm tra theo cả BookID và BookTitle để xử lý dữ liệu cũ có BookID = NULL.
+     * Kiểm tra sách đã có phiếu nhập kho chưa.
+     * CHỈ kiểm tra theo BookID — không fallback theo tên để tránh lấy phiếu của sách khác.
      */
     public boolean hasWarehouseReceipt(Integer bookId) {
-        // 1. Kiểm tra theo BookID (chuẩn)
-        if (detailRepository.existsByBookBookId(bookId)) {
-            return true;
-        }
-        // 2. Fallback: kiểm tra theo tên sách (trường hợp BookID NULL trong DB cũ)
-        Book book = bookRepository.findById(bookId).orElse(null);
-        if (book != null && book.getTitle() != null) {
-            return detailRepository.existsByBookTitleIgnoreCase(book.getTitle());
-        }
-        return false;
+        if (bookId == null) return false;
+        return detailRepository.existsByBookBookId(bookId);
     }
 
     /**
-     * Lấy tổng số lượng sách trong kho theo bookId (có fallback theo tên sách).
+     * Lấy tổng số lượng sách trong kho theo bookId.
+     * CHỈ tính theo BookID — không fallback theo tên để tránh cộng số lượng của sách khác.
      */
     public int getTotalWarehouseQuantity(Integer bookId) {
-        // 1. Tính theo BookID
-        int qty = detailRepository.sumQuantityByBookId(bookId);
-        if (qty > 0) return qty;
-        // 2. Fallback theo tên sách
-        Book book = bookRepository.findById(bookId).orElse(null);
-        if (book != null && book.getTitle() != null) {
-            return detailRepository.sumQuantityByBookTitle(book.getTitle());
-        }
-        return 0;
+        if (bookId == null) return 0;
+        return detailRepository.sumQuantityByBookId(bookId);
     }
 }

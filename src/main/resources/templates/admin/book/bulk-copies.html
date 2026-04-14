@@ -9,6 +9,31 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        /* === QR GRID IN SUCCESS MODAL === */
+        .qr-grid {
+            display: flex; flex-wrap: wrap; gap: 12px;
+            justify-content: center; max-height: 320px;
+            overflow-y: auto; padding: 4px;
+        }
+        .qr-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px;
+            padding: 8px 10px; min-width: 96px;
+        }
+        .qr-item canvas { border-radius: 6px; }
+        .qr-item .qr-bc {
+            font-family: monospace; font-size: 0.62rem; font-weight: 700;
+            color: #166534; text-align: center; word-break: break-all; max-width: 90px;
+        }
+        .qr-item .qr-dl {
+            font-size: 0.6rem; color: #0369a1; text-decoration: none;
+            background: #e0f2fe; border-radius: 6px; padding: 2px 6px;
+        }
+        .qr-item .qr-dl:hover { background: #bae6fd; }
+    </style>
     <style>
         :root {
             --primary: #6366f1;
@@ -166,17 +191,35 @@
     </style>
 </head>
 <body>
-
-<!-- TOP BAR -->
-<div class="top-bar">
-    <a href="/admin/book" class="brand">
-        <i class="fas fa-layer-group"></i>
-        Quản Lý Thư Viện
+<div class="page-layout">
+<aside class="admin-sidebar">
+    <a class="sidebar-brand" href="/admin/book">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">Thư Viện</span><span class="brand-sub">Admin Panel</span></div>
     </a>
-    <a href="/admin/book" class="btn-back">
-        <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách sách
-    </a>
-</div>
+    <nav class="sidebar-nav">
+        <a href="/admin/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/book" data-abbr="S" class="sidebar-link active"><span>Sách</span></a>
+        <a href="/admin/category" data-abbr="DM" class="sidebar-link"><span>Danh Mục</span></a>
+        <a href="/admin/warehouse" data-abbr="K" class="sidebar-link"><span>Kho</span></a>
+        <a href="/admin/borrow" data-abbr="MT" class="sidebar-link"><span>Mượn/Trả</span></a>
+        <a href="/admin/borrow/history" data-abbr="LS" class="sidebar-link"><span>Lịch Sử Phiếu</span></a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/borrow/violations" data-abbr="VP" class="sidebar-link warn"><span>Vi Phạm</span></a>
+        <a href="/admin/users" data-abbr="TV" class="sidebar-link"><span>Thẻ Thư Viện</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout"><i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span></button>
+        </form>
+    </div>
+</aside>
+<div class="admin-main">
 
 <div class="container-lg py-0">
     <!-- PAGE HEADER -->
@@ -325,7 +368,6 @@
                 </div>
             </div>
 
-            <!-- BOOK LIST TABLE -->
             <div class="result-panel">
                 <div class="result-header">
                     <h6 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i>Danh Sách Sách Trong Hệ Thống</h6>
@@ -337,11 +379,13 @@
                                 <th class="result-table" style="padding: 0.8rem 1rem;">ID</th>
                                 <th class="result-table" style="padding: 0.8rem 1rem;">Tên Sách</th>
                                 <th class="result-table" style="padding: 0.8rem 1rem;">Tác Giả</th>
+                                <th class="result-table" style="padding: 0.8rem 1rem; text-align:center;">Trạng Thái Kho</th>
                                 <th class="result-table" style="padding: 0.8rem 1rem; text-align:center;">Chọn Nhanh</th>
                             </tr>
                         </thead>
                         <tbody id="bookTableBody">
-                            <tr th:each="b : ${allBooks}">
+                            <tr th:each="b : ${allBooks}"
+                                th:with="wQty=${warehouseQtyMap[b.bookId] ?: 0}, copies=${copyCountMap[b.bookId] ?: 0}, remaining=${(warehouseQtyMap[b.bookId] ?: 0) - (copyCountMap[b.bookId] ?: 0)}">
                                 <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--muted); font-size: 0.85rem;"
                                     th:text="'#' + ${b.bookId}"></td>
                                 <td style="padding: 0.75rem 1rem;">
@@ -351,11 +395,35 @@
                                 <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: var(--muted);"
                                     th:text="${b.author != null ? b.author : '—'}"></td>
                                 <td style="padding: 0.75rem 1rem; text-align:center;">
-                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                    <!-- Chưa có phiếu kho -->
+                                    <span th:if="${wQty == 0}"
+                                          style="display:inline-block;background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:8px;padding:3px 10px;font-size:0.75rem;font-weight:600;">
+                                        ❌ Chưa có phiếu
+                                    </span>
+                                    <!-- Đã đủ số lượng -->
+                                    <span th:if="${wQty > 0 and remaining <= 0}"
+                                          style="display:inline-block;background:#fff1f2;color:#be123c;border:1px solid #fda4af;border-radius:8px;padding:3px 10px;font-size:0.75rem;font-weight:600;">
+                                        ⛔ Đủ kho (<span th:text="${copies}"></span>/<span th:text="${wQty}"></span>)
+                                    </span>
+                                    <!-- Còn chỗ -->
+                                    <span th:if="${wQty > 0 and remaining > 0}"
+                                          style="display:inline-block;background:#f0fdf4;color:#166534;border:1px solid #86efac;border-radius:8px;padding:3px 10px;font-size:0.75rem;font-weight:600;">
+                                        ✅ Còn <span th:text="${remaining}"></span> bản
+                                    </span>
+                                </td>
+                                <td style="padding: 0.75rem 1rem; text-align:center;">
+                                    <!-- Disable nút khi chưa có phiếu kho hoặc đã đủ số lượng -->
+                                    <button type="button"
+                                            th:if="${wQty > 0 and remaining > 0}"
+                                            class="btn btn-sm btn-outline-primary rounded-pill px-3"
                                             style="font-size: 0.8rem;"
                                             th:onclick="'selectBookById(' + ${b.bookId} + ')'">
                                         <i class="fas fa-hand-pointer me-1"></i>Chọn
                                     </button>
+                                    <span th:if="${wQty == 0}"
+                                          class="text-muted" style="font-size:0.78rem;">—</span>
+                                    <span th:if="${wQty > 0 and remaining <= 0}"
+                                          class="text-muted" style="font-size:0.78rem;">Đủ rồi</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -368,7 +436,7 @@
 
 <!-- ===== SUCCESS MODAL ===== -->
 <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border-radius:20px; border:none; overflow:hidden;">
             <div class="modal-body p-0">
                 <!-- Header xanh -->
@@ -380,14 +448,23 @@
                 </div>
                 <!-- Body -->
                 <div style="padding:1.8rem;text-align:center;">
-                    <p id="successModalMsg" style="font-size:1rem;color:#1e293b;font-weight:600;margin-bottom:1.2rem;"></p>
-                    <div id="successModalDetail" style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:1rem;margin-bottom:1.5rem;font-size:0.88rem;color:#166534;"></div>
-                    <div class="d-flex gap-2 justify-content-center">
+                    <p id="successModalMsg" style="font-size:1rem;color:#1e293b;font-weight:600;margin-bottom:1rem;"></p>
+                    <div id="successModalDetail" style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:0.88rem;color:#166534;"></div>
+
+                    <!-- QR GRID -->
+                    <div id="successQrSection" style="display:none;">
+                        <div style="font-size:0.82rem;color:#0369a1;font-weight:600;margin-bottom:0.6rem;">
+                            <i class="fas fa-qrcode me-1"></i>Mã QR các bản sao đã tạo (click để tải PNG):
+                        </div>
+                        <div class="qr-grid" id="successQrGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap:10px; margin-top:10px;"></div>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center mt-3">
                         <button type="button" class="btn btn-success rounded-pill px-4 fw-bold"
                                 onclick="closeSuccessAndRefresh()">
                             <i class="fas fa-redo me-2"></i>Lên kệ tiếp
                         </button>
-                        <a href="/admin/book" class="btn btn-outline-secondary rounded-pill px-4">
+                        <a href="/admin/book" data-abbr="S" class="btn btn-outline-secondary rounded-pill px-4">
                             <i class="fas fa-home me-2"></i>Trang chủ Admin
                         </a>
                     </div>
@@ -499,6 +576,15 @@ function updatePreview() {
 
                 warehouseDiv.style.background = '#f0fdf4';
                 warehouseDiv.style.border = '1px solid #86efac';
+
+                const damaged = data.damagedCount || 0;
+                const damagedRow = damaged > 0
+                    ? `<tr style="border-top:1px solid #fca5a5;background:#fff1f2;">
+                           <td style="padding:4px 8px 2px 0;color:#dc2626;font-weight:700;">🔴 Sách Bảo trì (hỏng/mất):</td>
+                           <td style="font-weight:800;color:#dc2626;">${damaged} cuốn</td>
+                       </tr>`
+                    : `<tr><td style="padding:2px 8px 2px 0;color:#16a34a;">✅ Không có sách hỏng nặng</td><td></td></tr>`;
+
                 warehouseDiv.innerHTML = `
                     <div class="d-flex align-items-start gap-3">
                         <i class="fas fa-check-circle" style="color:#16a34a;font-size:1.3rem;margin-top:2px;"></i>
@@ -508,11 +594,13 @@ function updatePreview() {
                                 <table style="width:100%;border-collapse:collapse;">
                                     <tr><td style="padding:2px 8px 2px 0;">📦 Tổng nhập kho:</td><td style="font-weight:700;">${wQty} cuốn</td></tr>
                                     <tr><td style="padding:2px 8px 2px 0;">🏷️ Đã tạo mã vạch:</td><td style="font-weight:700;">${existing} bản sao</td></tr>
+                                    ${damagedRow}
                                     <tr style="border-top:1px solid #bbf7d0;"><td style="padding:4px 8px 2px 0;font-weight:700;color:#15803d;">✨ Còn có thể lên kệ:</td><td style="font-weight:800;color:#15803d;font-size:1rem;">${remaining} bản sao</td></tr>
                                 </table>
                             </div>
                         </div>
                     </div>`;
+
 
                 if (remaining > 0) {
                     btn.disabled = false;
@@ -653,12 +741,54 @@ function submitBulkForm(event) {
 
         if (data.success) {
             const bookTitle = document.getElementById('previewTitle').textContent;
+            const barcodes = data.barcodes || [];
+
             // Hiện modal thành công
             document.getElementById('successModalMsg').textContent = data.message;
             document.getElementById('successModalDetail').innerHTML =
                 `📚 Sách: <strong>${bookTitle}</strong><br>` +
                 `✅ Đã tạo <strong>${data.created}</strong> bản sao mới với mã vạch tự động.<br>` +
                 `🏷️ Trạng thái: <strong>Sẵn sàng</strong> — có thể cho mượn ngay.`;
+
+            // Render QR codes
+            const qrSection = document.getElementById('successQrSection');
+            const qrGrid = document.getElementById('successQrGrid');
+            qrGrid.innerHTML = '';
+
+            if (barcodes.length > 0 && typeof QRCode !== 'undefined') {
+                qrSection.style.display = 'block';
+                barcodes.forEach(function(bc) {
+                    const item = document.createElement('div');
+                    item.className = 'qr-item';
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 80;
+                    canvas.height = 80;
+
+                    const bcLabel = document.createElement('div');
+                    bcLabel.className = 'qr-bc';
+                    bcLabel.textContent = bc;
+
+                    const dlLink = document.createElement('a');
+                    dlLink.className = 'qr-dl';
+                    dlLink.textContent = '⬇ PNG';
+                    dlLink.download = 'QR-' + bc + '.png';
+
+                    item.appendChild(canvas);
+                    item.appendChild(bcLabel);
+                    item.appendChild(dlLink);
+                    qrGrid.appendChild(item);
+
+                    QRCode.toCanvas(canvas, bc, { width: 80, margin: 1, color: { dark: '#065f46', light: '#f0fdf4' } })
+                        .then(function() {
+                            dlLink.href = canvas.toDataURL('image/png');
+                        })
+                        .catch(function() {});
+                });
+            } else {
+                qrSection.style.display = 'none';
+            }
+
             new bootstrap.Modal(document.getElementById('successModal')).show();
 
             // Cập nhật lại số lượng kho sau khi lên kệ xong
@@ -684,5 +814,6 @@ function closeSuccessAndRefresh() {
     checkQtyLimit();
 }
 </script>
+</div></div>
 </body>
 </html>

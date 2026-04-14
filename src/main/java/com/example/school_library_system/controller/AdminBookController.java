@@ -2,7 +2,6 @@ package com.example.school_library_system.controller;
 
 import com.example.school_library_system.entity.Book;
 import com.example.school_library_system.entity.BookCopy;
-import com.example.school_library_system.entity.BookSamplePage;
 import com.example.school_library_system.service.BookCopyService;
 import com.example.school_library_system.service.BookService;
 import com.example.school_library_system.service.CategoryService;
@@ -16,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -36,7 +36,24 @@ public class AdminBookController {
 
     @GetMapping({"", "/"})
     public String listBooks(Model model) {
-        model.addAttribute("books", bookService.getAllBooks());
+        List<Book> books = bookService.getAllBooks();
+        model.addAttribute("books", books);
+
+        // Trạng thái kho cho mỗi sách — dùng hiển thị badge trong danh sách
+        Map<Integer, Boolean> warehouseStatusMap = new java.util.HashMap<>();
+        Map<Integer, Integer> warehouseQtyMap   = new java.util.HashMap<>();
+        Map<Integer, Long>    copyCountMap       = new java.util.HashMap<>();
+        for (Book b : books) {
+            boolean has = warehouseReceiptService.hasWarehouseReceipt(b.getBookId());
+            int     qty = has ? warehouseReceiptService.getTotalWarehouseQuantity(b.getBookId()) : 0;
+            long    cnt = bookCopyService.countAllCopiesByBookId(b.getBookId());
+            warehouseStatusMap.put(b.getBookId(), has);
+            warehouseQtyMap.put(b.getBookId(), qty);
+            copyCountMap.put(b.getBookId(), cnt);
+        }
+        model.addAttribute("warehouseStatusMap", warehouseStatusMap);
+        model.addAttribute("warehouseQtyMap",   warehouseQtyMap);
+        model.addAttribute("copyCountMap",       copyCountMap);
         return "admin/book/list";
     }
 
@@ -68,6 +85,44 @@ public class AdminBookController {
         return "redirect:/admin/book";
     }
 
+    /**
+     * Quick-create: Tạo sách nhanh ngay từ form phiếu nhập kho.
+     * Sách được tạo vào catalog nhưng chưa có barcode — cần phiếu kho mới lên kệ được.
+     */
+    @PostMapping("/api/quick-create")
+    @ResponseBody
+    public ResponseEntity<?> quickCreateBook(@RequestBody Map<String, String> payload) {
+        try {
+            String title = payload.getOrDefault("title", "").trim();
+            if (title.isEmpty()) {
+                Map<String, Object> err = new HashMap<>();
+                err.put("success", false);
+                err.put("message", "Tên sách không được để trống!");
+                return ResponseEntity.badRequest().body(err);
+            }
+
+            Book book = new Book();
+            book.setTitle(title);
+            book.setAuthor(payload.getOrDefault("author", "").trim());
+            book.setPublisher(payload.getOrDefault("publisher", "").trim());
+
+            Book saved = bookService.saveBook(book, null);
+
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("success", true);
+            resp.put("bookId", saved.getBookId());
+            resp.put("title", saved.getTitle());
+            resp.put("author", saved.getAuthor() != null ? saved.getAuthor() : "");
+            resp.put("message", "✅ Đã tạo sách \"" + saved.getTitle() + "\" vào catalogue!");
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("success", false);
+            err.put("message", "Lỗi tạo sách: " + e.getMessage());
+            return ResponseEntity.badRequest().body(err);
+        }
+    }
+
     // --- Kiểm tra phiếu kho realtime (AJAX) ---
     @GetMapping("/api/check-warehouse")
     @ResponseBody
@@ -82,13 +137,27 @@ public class AdminBookController {
         result.put("warehouseQty", warehouseQty);
         result.put("existingCopies", existingCopies);
         result.put("remainingSlots", Math.max(0, warehouseQty - (int) existingCopies));
+        result.put("damagedCount", bookCopyService.countDamagedCopiesByBookId(bookId));
         return ResponseEntity.ok(result);
     }
 
     // --- Thêm hàng loạt bản sao từ danh sách sách có sẵn ---
     @GetMapping("/bulk-copies")
     public String showBulkCopiesForm(Model model) {
-        model.addAttribute("allBooks", bookService.getAllBooks());
+        List<Book> allBooks = bookService.getAllBooks();
+        model.addAttribute("allBooks", allBooks);
+
+        // Tính trạng thái kho cho từng sách để hiển thị trong bảng
+        Map<Integer, Integer> warehouseQtyMap = new java.util.HashMap<>();
+        Map<Integer, Long> copyCountMap = new java.util.HashMap<>();
+        for (Book b : allBooks) {
+            int wQty = warehouseReceiptService.getTotalWarehouseQuantity(b.getBookId());
+            long copies = bookCopyService.countAllCopiesByBookId(b.getBookId());
+            warehouseQtyMap.put(b.getBookId(), wQty);
+            copyCountMap.put(b.getBookId(), copies);
+        }
+        model.addAttribute("warehouseQtyMap", warehouseQtyMap);
+        model.addAttribute("copyCountMap", copyCountMap);
         return "admin/book/bulk-copies";
     }
 
@@ -101,11 +170,12 @@ public class AdminBookController {
             if (quantity < 1 || quantity > 100) {
                 throw new IllegalArgumentException("Số lượng phải từ 1 đến 100.");
             }
-            int created = bookCopyService.addBulkCopies(bookId, quantity);
+            List<String> barcodes = bookCopyService.addBulkCopies(bookId, quantity);
             Map<String, Object> resp = new HashMap<>();
             resp.put("success", true);
-            resp.put("created", created);
-            resp.put("message", "Đã tạo thành công " + created + " bản sao mới lên kệ!");
+            resp.put("created", barcodes.size());
+            resp.put("barcodes", barcodes);
+            resp.put("message", "Đã tạo thành công " + barcodes.size() + " bản sao mới lên kệ!");
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
             Map<String, Object> resp = new HashMap<>();
@@ -158,17 +228,35 @@ public class AdminBookController {
     @GetMapping("/{id}/copies")
     public String manageCopies(@PathVariable Integer id, Model model) {
         Book book = bookService.getBookById(id);
-        if(book == null) return "redirect:/admin/book";
+        if (book == null) return "redirect:/admin/book";
 
-        model.addAttribute("book", book);
-        model.addAttribute("copies", bookCopyService.getCopiesByBookId(id));
-        model.addAttribute("newCopy", new BookCopy());
+        boolean hasWarehouse = warehouseReceiptService.hasWarehouseReceipt(id);
+        // Tổng phiếu kho khai báo
+        int warehouseQty = hasWarehouse ? warehouseReceiptService.getTotalWarehouseQuantity(id) : 0;
+        // Tổng mã vạch đã tạo (mọi trạng thái)
+        long existingCopies = bookCopyService.countAllCopiesByBookId(id);
+        // Bản sao dư so với phiếu kho (dữ liệu cũ tạo trước khi có validation)
+        long orphanedCopies = (hasWarehouse && existingCopies > warehouseQty) ? existingCopies - warehouseQty : 0;
+        // Slot còn lại = phiếu kho - số mã vạch đã tạo
+        int remainingSlots = hasWarehouse ? (int) Math.max(0, warehouseQty - existingCopies) : 0;
+
+        model.addAttribute("book",           book);
+        model.addAttribute("copies",         bookCopyService.getCopiesByBookId(id));
+        model.addAttribute("newCopy",        new BookCopy());
+        model.addAttribute("damagedCount",   bookCopyService.countDamagedCopiesByBookId(id));
+        model.addAttribute("hasWarehouse",   hasWarehouse);
+        model.addAttribute("warehouseQty",   warehouseQty);
+        model.addAttribute("existingCopies", existingCopies);
+        model.addAttribute("remainingSlots", remainingSlots);
+        model.addAttribute("orphanedCopies", orphanedCopies);
         return "admin/book/manage-copies";
     }
 
     @PostMapping("/{id}/copies/save")
     public String saveCopy(@PathVariable Integer id, @ModelAttribute BookCopy copy, RedirectAttributes redirectAttributes) {
+        // Chặn null sách
         Book book = bookService.getBookById(id);
+        if (book == null) return "redirect:/admin/book";
         copy.setBook(book);
         if (copy.getPhysicalStatus() == null || copy.getPhysicalStatus().isEmpty()) {
             copy.setPhysicalStatus("Sẵn sàng");
@@ -183,11 +271,20 @@ public class AdminBookController {
             }
         }
 
-        // === GATE 2: Kiểm tra giới hạn kho ===
+        // === GATE 2: Kiểm tra phiếu nhập kho (ĐÂY LÀ GATE BẪT BUỘC) ===
+        // Chỉ kiểm tra theo BookID — không chấp nhận fallback hay bypass
+        boolean hasReceipt = warehouseReceiptService.hasWarehouseReceipt(id);
+        if (!hasReceipt) {
+            redirectAttributes.addFlashAttribute("error",
+                "❌ KHAI BAN: cuốn sách \"" + book.getTitle() + "\" chưa có phiếu nhập kho! " +
+                "Vui lòng vào mục Kho → Tạo phiếu nhập trước rồi mới có thể lên kệ.");
+            return "redirect:/admin/book/" + id + "/copies";
+        }
+
+        // === GATE 3: Kiểm tra số lượng không vượt quá phiếu kho ===
         int warehouseQty = warehouseReceiptService.getTotalWarehouseQuantity(id);
         long existingCopies = bookCopyService.countAllCopiesByBookId(id);
-        int remainingSlots = (int) Math.max(0, warehouseQty - existingCopies);
-        if (warehouseQty > 0 && remainingSlots <= 0) {
+        if (existingCopies >= warehouseQty) {
             redirectAttributes.addFlashAttribute("error",
                 "⛔ Đã đạt giới hạn kho! Phiếu nhập ghi " + warehouseQty + " cuốn, " +
                 "đã đăng ký " + existingCopies + " bản sao. Không thể thêm mã vạch mới.");

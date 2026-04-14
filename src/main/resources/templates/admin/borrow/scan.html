@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiếp Nhận Sách Tại Quầy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <!-- jsQR for QR code scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #f8fafc;
+            background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,0.03) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,0.03) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,100%,55%,0.03) 0, transparent 50%);
+            color: #1e293b;
+        }
+
+        /* ── WEBCAM PANEL ── */
+        .scan-panel {
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.02);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .scan-panel-header {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+        }
+        .scan-panel-header h6 { margin:0; font-weight:800; font-size:.95rem; letter-spacing: -0.01em; color: #0f172a; }
+
+        .cam-wrap {
+            position: relative;
+            background: #020617;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+            border-radius: 16px;
+            margin: 1rem;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+        }
+        #camVideo {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0.9;
+        }
+        .scan-overlay {
+            position: absolute; inset:0;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+        .scan-frame {
+            width: 50%; aspect-ratio:1;
+            border: 2px solid rgba(99,102,241,0.5);
+            border-radius: 20px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), inset 0 0 20px rgba(99,102,241,0.4);
+            animation: scanPulse 2.5s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        @keyframes scanPulse {
+            0%,100% { border-color: rgba(99,102,241,0.4); box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), inset 0 0 20px rgba(99,102,241,0.4); }
+            50%      { border-color: rgba(99,102,241,0.9); box-shadow: 0 0 0 9999px rgba(0,0,0,0.65), inset 0 0 40px rgba(99,102,241,0.8); }
+        }
+        .scan-line {
+            position: absolute; left:0; right:0; height:3px;
+            background: linear-gradient(90deg, transparent, #818cf8, #4f46e5, #818cf8, transparent);
+            box-shadow: 0 2px 15px #6366f1;
+            opacity: 0.8;
+            animation: scanLine 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes scanLine {
+            0%   { top: 5%; opacity: 0; transform: scaleX(0.8); }
+            15%  { opacity: 1; transform: scaleX(1); }
+            85%  { opacity: 1; transform: scaleX(1); }
+            100% { top: 95%; opacity: 0; transform: scaleX(0.8); }
+        }
+        .cam-status {
+            position: absolute; bottom:0; left:0; right:0;
+            padding: .75rem 1rem;
+            background: linear-gradient(transparent, rgba(0,0,0,0.85));
+            color:#f8fafc; font-size:.8rem; font-weight:600; text-align:center;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── READER INFO CARD ── */
+        .reader-card {
+            border-radius: 20px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideUpFade 0.4s ease-out;
+        }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(15px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .reader-card:hover {
+            box-shadow: 0 12px 24px -8px rgba(0,0,0,0.06);
+            transform: translateY(-2px);
+        }
+        .reader-card.found { border-color: rgba(34,197,94,0.4); }
+        .reader-card.not-found { border-color: rgba(239,68,68,0.4); }
+        .reader-card-header {
+            padding: 1rem 1.25rem;
+            display: flex; align-items: center; gap: 10px;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: .8rem; font-weight: 700; color: #475569;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .reader-card-body { padding: 1.25rem; }
+        .reader-avatar {
+            width: 56px; height: 56px; border-radius: 16px;
+            object-fit: cover; border: 2px solid #e0e7ff; flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(99,102,241,0.15);
+        }
+        .reader-avatar-placeholder {
+            width: 56px; height: 56px; border-radius: 16px; flex-shrink: 0;
+            background: linear-gradient(135deg, #6366f1, #4338ca);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; font-weight: 800; color: #fff;
+            box-shadow: 0 4px 10px rgba(99,102,241,0.25);
+        }
+        .reader-info-label { font-size:.7rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px; margin-bottom:2px; }
+        .reader-info-value { font-size:.95rem;font-weight:800;color:#0f172a; }
+
+        /* ── BOOK CHECKLIST ── */
+        .book-checklist { list-style:none;padding:0;margin:0; }
+        .book-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 16px; border-radius: 16px; 
+            border: 1px solid #e2e8f0;
+            margin-bottom: 10px; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #fff;
+            animation: slideUpFade 0.3s ease-out backwards;
+        }
+        .book-item:nth-child(1) { animation-delay: 0.05s; }
+        .book-item:nth-child(2) { animation-delay: 0.1s; }
+        .book-item:nth-child(3) { animation-delay: 0.15s; }
+        .book-item:nth-child(4) { animation-delay: 0.2s; }
+
+        .book-item:hover {
+            transform: translateY(-2px) scale(1.005);
+            box-shadow: 0 8px 16px -4px rgba(0,0,0,0.05);
+        }
+        .book-item.scanned    { border-color: rgba(34,197,94,0.3); background: linear-gradient(to right, #f0fdf4, #fff); }
+        .book-item.wrong-scan { border-color: rgba(239,68,68,0.3); background: linear-gradient(to right, #fef2f2, #fff); }
+        
+        .book-item-icon {
+            width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* pop effect */
+        }
+        .book-item.pending .book-item-icon { background: #f1f5f9; color: #94a3b8; }
+        .book-item.scanned .book-item-icon { 
+            background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff;
+            box-shadow: 0 4px 10px rgba(34,197,94,0.3);
+            transform: scale(1.1);
+        }
+        .book-item.wrong-scan .book-item-icon { background: #fee2e2; color: #ef4444; }
+        
+        .book-item-label { font-size: .9rem; font-weight: 700; color: #1e293b; flex: 1; letter-spacing: -0.01em; }
+        .book-item.scanned .book-item-label { color: #166534; }
+        .book-item.wrong-scan .book-item-label { color: #991b1b; }
+        .book-item-barcode { font-size: .75rem; font-family: 'SFMono-Regular', Consolas, monospace; color: #64748b; margin-top:2px; }
+        
+        .book-status-badge {
+            font-size: .7rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+        .badge-pending { background: #f1f5f9; color: #64748b; }
+        .badge-scanned { background: #dcfce7; color: #166534; box-shadow: 0 2px 4px rgba(34,197,94,0.1); }
+        .badge-wrong   { background: #fee2e2; color: #b91c1c; }
+
+        /* ── PROGRESS BAR ── */
+        .progress-wrap {
+            background:#e2e8f0; border-radius:20px; height:12px; overflow:hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            margin-top: 4px;
+        }
+        .progress-fill {
+            height:100%; border-radius:20px;
+            background: linear-gradient(90deg, #6366f1, #3b82f6, #10b981);
+            background-size: 200% 200%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: gradientMove 3s ease infinite;
+        }
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ── WRONG SCAN INLINE ERROR ── */
+        .inline-error {
+            display:none; align-items:center; gap:12px;
+            background: linear-gradient(to right, #fef2f2, #fff); border-left: 4px solid #ef4444;
+            border-radius: 12px;
+            padding: 12px 16px; font-size: .85rem; color: #b91c1c;
+            margin-bottom: 12px; box-shadow: 0 4px 12px rgba(239,68,68,0.05);
+            animation: shakeX .4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+        .inline-error.show { display:flex; }
+        @keyframes shakeX {
+            0%,100%{transform:translate3d(0,0,0)}
+            20%,60%{transform:translate3d(-5px,0,0)}
+            40%,80%{transform:translate3d(5px,0,0)}
+        }
+
+        /* ── MODE TABS ── */
+        .mode-tabs { display:flex; gap:8px; padding: .75rem 1rem 0 1rem; background: transparent; }
+        .mode-tab {
+            flex:1; padding: 10px 6px; border-radius: 14px 14px 0 0; border: none;
+            font-size: .8rem; font-weight: 700; cursor: pointer; text-align: center;
+            transition: all .2s ease;
+            background: #f1f5f9; color: #64748b;
+            box-shadow: inset 0 -2px 5px rgba(0,0,0,0.02);
+            position: relative;
+        }
+        .mode-tab:hover { background: #e2e8f0; color: #334155; }
+        .mode-tab.active {
+            background: #ede9fe; color: #4f46e5;
+            box-shadow: none; z-index: 10;
+        }
+        .mode-tab.active::after {
+            content:''; position:absolute; bottom:0; left:20%; right:20%; height:3px;
+            background: #4f46e5; border-radius: 3px 3px 0 0;
+        }
+
+        /* ── CONFIRM / NEW BORROW ELEMENTS ── */
+        .nbm-day-opt, .days-option-sm {
+            display:inline-block; padding:8px 16px; margin:4px;
+            border: 2px solid transparent; border-radius: 12px; cursor: pointer;
+            font-weight: 700; font-size: .85rem; transition: all .2s ease; text-align: center;
+            background: #f1f5f9; color: #475569;
+        }
+        .nbm-day-opt:hover, .days-option-sm:hover {
+            background: #e2e8f0; transform: translateY(-1px);
+        }
+        .nbm-day-opt.selected, .days-option-sm.selected {
+            background: #4f46e5; color: #fff; box-shadow: 0 4px 10px rgba(79,70,229,0.3);
+            border-color: #4f46e5;
+        }
+        .nbm-day-opt small, .days-option-sm small { display:block; font-weight:500; font-size:.7rem; color: inherit; opacity:0.8; margin-top:2px; }
+
+        .nbm-min-opt, .test-opt-sm {
+            padding: 6px 14px; border-radius: 10px; border: 1px solid #fde68a;
+            background: #fffbeb; color: #92400e; font-weight: 700; font-size: .8rem;
+            cursor: pointer; transition: all .2s ease;
+        }
+        .nbm-min-opt:hover, .test-opt-sm:hover { background: #fef3c7; transform: translateY(-1px); }
+        .nbm-min-opt.selected, .test-opt-sm.selected { background: #f59e0b; color: #fff; box-shadow: 0 4px 8px rgba(245,158,11,0.2); border-color:#f59e0b; }
+
+        /* ── EMPTY STATE ── */
+        .state-placeholder {
+            padding: 3rem 1rem; text-align: center; color: #cbd5e1;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .state-placeholder i { font-size: 3rem; margin-bottom: 1rem; display: block; opacity: 0.5; }
+        .state-placeholder p { font-size: .9rem; font-weight: 500; margin: 0; color: #94a3b8; }
+        
+        @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+
+        /* ── PHASE TAG ── */
+        .phase-badge {
+            display:inline-flex; align-items:center; gap:8px;
+            padding: 6px 14px; border-radius: 30px; font-size: .78rem; font-weight: 800;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            letter-spacing: 0.3px; text-transform: uppercase;
+        }
+        .phase-card { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #4338ca; border: 1px solid #c4b5fd; }
+        .phase-book { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1d4ed8; border: 1px solid #93c5fd; }
+        .phase-done { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #15803d; border: 1px solid #86efac; }
+        .phase-def  { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #475569; border: 1px solid #cbd5e1; }
+
+        /* blinking dot */
+        .blink { animation: blink 1.5s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* flash feedback on scan */
+        .scan-flash {
+            position:absolute; inset:0; pointer-events:none;
+            background: #fff; opacity: 0; mix-blend-mode: overlay;
+            transition: opacity 0.1s ease-out;
+        }
+        .scan-flash.green  { background: #4ade80; }
+        .scan-flash.red    { background: #f87171; }
+        .flash-active { opacity: 0.6 !important; transition: opacity 0.05s ease-in; }
+        
+        /* Utility */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+<div class="page-layout">
+<aside class="admin-sidebar">
+    <a class="sidebar-brand" href="/admin/book">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">Thư Viện</span><span class="brand-sub">Admin Panel</span></div>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="/admin/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/book" data-abbr="S" class="sidebar-link"><span>Sách</span></a>
+        <a href="/admin/category" data-abbr="DM" class="sidebar-link"><span>Danh Mục</span></a>
+        <a href="/admin/warehouse" data-abbr="K" class="sidebar-link"><span>Kho</span></a>
+        <a href="/admin/borrow" data-abbr="MT" class="sidebar-link active"><span>Mượn/Trả</span></a>
+        <a href="/admin/borrow/history" data-abbr="LS" class="sidebar-link"><span>Lịch Sử Phiếu</span></a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/borrow/violations" data-abbr="VP" class="sidebar-link warn"><span>Vi Phạm</span></a>
+        <a href="/admin/users" data-abbr="TV" class="sidebar-link"><span>Thẻ Thư Viện</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout"><i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span></button>
+        </form>
+    </div>
+</aside>
+<div class="admin-main">
+
+<div class="container-lg py-4 mb-5">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 style="font-size:1.5rem;font-weight:800;margin:0;">
+                <i class="fas fa-qrcode me-2" style="color:#6366f1;"></i>Tiếp Nhận Sách Tại Quầy
+            </h1>
+            <p class="text-muted mb-0" style="font-size:.85rem;">Quét thẻ học sinh → quét sách → xác nhận giao.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span id="phaseBadge" class="phase-badge phase-def">
+                <i class="fas fa-circle-dot blink"></i><span id="phaseText">Chờ quét thẻ</span>
+            </span>
+            <a href="/admin/borrow" class="btn btn-outline-secondary rounded-3">
+                <i class="fas fa-arrow-left me-1"></i>Quay lại
+            </a>
+        </div>
+    </div>
+
+    <!-- ERROR flash -->
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-3">
+        <i class="fas fa-exclamation-circle me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ════ LEFT: WEBCAM ════ -->
+        <div class="col-lg-5">
+            <div class="scan-panel h-100">
+
+                <!-- Mode tabs -->
+                <div class="mode-tabs">
+                    <button type="button" class="mode-tab active" id="tabCard" onclick="switchMode('card')">
+                        <i class="fas fa-id-card me-1"></i>Quét Thẻ HS
+                    </button>
+                    <button type="button" class="mode-tab" id="tabBook" onclick="switchMode('book')">
+                        <i class="fas fa-book me-1"></i>Quét Sách
+                    </button>
+                </div>
+
+                <!-- Camera -->
+                <div class="cam-wrap">
+                    <video id="camVideo" autoplay playsinline muted></video>
+                    <!-- Off-screen canvas for QR decode -->
+                    <canvas id="camCanvas" style="display:none;"></canvas>
+                    <div class="scan-overlay">
+                        <div class="scan-frame">
+                            <div class="scan-line"></div>
+                        </div>
+                    </div>
+                    <div class="scan-flash green" id="flashGreen"></div>
+                    <div class="scan-flash red" id="flashRed"></div>
+                    <div class="cam-status" id="camStatus">
+                        <i class="fas fa-circle-notch fa-spin me-1"></i>Đang khởi động camera...
+                    </div>
+                </div>
+
+                <!-- Reader info -->
+                <div class="scan-panel-header mt-0 border-top-0 pt-0" style="border-top:1px solid #e2e8f0;padding-top:.9rem;margin-top:0;">
+                    <h6><i class="fas fa-user-circle me-1 text-indigo-500" style="color:#6366f1;"></i>Thông Tin Độc Giả</h6>
+                    <span id="readerStatusBadge" style="font-size:.72rem;"></span>
+                </div>
+                <div id="readerInfoArea" class="px-3 pb-3">
+                    <!-- Placeholder -->
+                    <div class="state-placeholder" id="readerPlaceholder">
+                        <i class="fas fa-id-card"></i>
+                        <p>Chưa quét thẻ.<br>Hướng thẻ QR vào camera.</p>
+                    </div>
+                    <!-- Found -->
+                    <div id="readerFoundCard" style="display:none;">
+                        <div class="reader-card found">
+                            <div class="reader-card-header">
+                                <i class="fas fa-check-circle" style="color:#22c55e;"></i>
+                                <span>Đã xác thực</span>
+                                <button type="button"
+                                        onclick="resetReader()"
+                                        style="margin-left:auto;background:transparent;border:none;color:#94a3b8;font-size:.75rem;cursor:pointer;padding:0;">
+                                    <i class="fas fa-redo me-1"></i>Đổi thẻ
+                                </button>
+                            </div>
+                            <div class="reader-card-body">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <img id="readerPhoto" src="" alt="" class="reader-avatar" style="display:none;">
+                                    <div id="readerAvatarPH" class="reader-avatar-placeholder"></div>
+                                    <div>
+                                        <div class="reader-info-value" id="readerName">—</div>
+                                        <div class="reader-info-label mt-1" id="readerGroup">—</div>
+                                    </div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="reader-info-label">Mã HS</div>
+                                        <div class="reader-info-value" id="readerStudentId" style="font-family:monospace;color:#4f46e5;">—</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="reader-info-label">Email</div>
+                                        <div class="reader-info-value" id="readerEmail" style="font-size:.78rem;">—</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="reader-info-label">ID Hệ thống</div>
+                                        <div class="reader-info-value" id="readerUserId" style="font-family:monospace;">—</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="reader-info-label">Trạng thái</div>
+                                        <span id="readerActive" class="badge" style="font-size:.72rem;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Not found -->
+                    <div id="readerNotFoundCard" style="display:none;">
+                        <div class="reader-card not-found">
+                            <div class="reader-card-body text-center py-3">
+                                <i class="fas fa-exclamation-circle fa-2x mb-2" style="color:#ef4444;"></i>
+                                <div style="font-size:.9rem;font-weight:700;color:#b91c1c;" id="readerErrorMsg">Không tìm thấy thẻ.</div>
+                                <small class="text-muted">Thử quét lại hoặc kiểm tra thẻ.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════ RIGHT: BOOK CHECKLIST ════ -->
+        <div class="col-lg-7">
+            <div class="scan-panel h-100 d-flex flex-column">
+                <div class="scan-panel-header">
+                    <h6><i class="fas fa-clipboard-list me-1" style="color:#3b82f6;"></i>Danh Sách Sách Cần Giao</h6>
+                    <span id="progressText" style="font-size:.8rem;font-weight:700;color:#6366f1;"></span>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="px-3 py-2 border-bottom" id="progressSection" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span style="font-size:.75rem;font-weight:600;color:#64748b;">
+                            <i class="fas fa-tasks me-1"></i>Tiến độ giao sách
+                        </span>
+                        <span id="progressCount" style="font-size:.82rem;font-weight:800;color:#6366f1;"></span>
+                    </div>
+                    <div class="progress-wrap">
+                        <div class="progress-fill" id="progressFill" style="width:0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Inline error for wrong book scan -->
+                <div class="inline-error mx-3 mt-3" id="wrongScanError">
+                    <i class="fas fa-ban fa-lg"></i>
+                    <div>
+                        <div style="font-weight:700;">Sách không khớp!</div>
+                        <div id="wrongScanMsg" style="font-size:.78rem;margin-top:2px;"></div>
+                    </div>
+                </div>
+                <!-- Step 1: chưa có độc giả -->
+                <div class="state-placeholder flex-grow-1 align-items-center justify-content-center" id="waitReaderState" style="display:flex; flex-direction:column;">
+                    <i class="fas fa-arrow-left" style="color:#cbd5e1;font-size:2rem;margin-bottom:.75rem;"></i>
+                    <p style="font-size:.85rem;color:#94a3b8;">Quét thẻ học sinh trước<br>để tải danh sách sách.</p>
+                </div>
+
+                <!-- Step 2: có độc giả, đang hiện checklist -->
+                <div id="bookChecklistArea" style="display:none; flex-direction:column;" class="flex-grow-1">
+                    <!-- sách cần giao (phiếu "Đã đặt chỗ") -->
+                    <div id="reservedBooksSection" style="display:none;">
+                        <div class="px-3 pt-3 pb-1">
+                            <div style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">
+                                <i class="fas fa-bookmark me-1" style="color:#f59e0b;"></i>Sách trong phiếu đặt chỗ
+                            </div>
+                        </div>
+                        <ul class="book-checklist px-3 pb-2" id="reservedBookList"></ul>
+                    </div>
+
+                    <!-- Không có phiếu đặt chỗ: tạo phiếu mới (INLINE) -->
+                    <div id="newBorrowSection" style="display:none; flex-direction:column;" class="h-100">
+                        <div class="px-3 pt-3 pb-1" style="border-bottom:1px solid #e2e8f0;background:#f8fafc;display:flex;justify-content:space-between;align-items:center;">
+                            <div style="font-size:.75rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.5px;">
+                                <i class="fas fa-plus-circle me-1"></i>Tạo Phiếu Mượn Mới Tại Quầy
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 overflow-auto p-3">
+                            <form id="newBorrowForm" action="/admin/borrow/save" method="post">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <input type="hidden" name="readerId"     id="nbmReaderId"   value=""/>
+                                <input type="hidden" name="borrowDays"   id="nbmBorrowDays" value="7"/>
+                                <input type="hidden" name="borrowMinutes" id="nbmBorrowMin" value="0"/>
+                                <div id="nbmBookIdsContainer"></div>
+
+                                <!-- THỜI HẠN MƯỢN -->
+                                <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.02);">
+                                    <div style="font-size:.78rem;font-weight:700;color:#1e293b;margin-bottom:8px;">
+                                        <i class="fas fa-calendar-alt me-1 text-success"></i>Thời hạn mượn
+                                    </div>
+                                    <div id="nbmPanelNormal">
+                                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                                            <div class="nbm-day-opt selected" onclick="nbmSetDays(7,this)">7 ngày</div>
+                                            <div class="nbm-day-opt" onclick="nbmSetDays(14,this)">14 ngày</div>
+                                            <div class="nbm-day-opt" onclick="nbmSetDays(30,this)">30 ngày</div>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="number" id="nbmCustomDays" class="form-control" min="1" max="90"
+                                                   placeholder="Hoặc nhập ngày..." style="border:1.5px solid #e2e8f0;border-radius:8px 0 0 8px;"
+                                                   oninput="nbmOnCustomDays(this)">
+                                            <span class="input-group-text fw-bold" style="border:1.5px solid #e2e8f0;border-left:none;border-radius:0 8px 8px 0;">Ngày</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Test mode -->
+                                    <button type="button" id="nbmTestToggleBtn" onclick="nbmToggleTest()"
+                                            style="font-size:.7rem;background:transparent;border:1.5px solid #fde68a;border-radius:6px;color:#b45309;padding:2px 8px;cursor:pointer;">
+                                        <i class="fas fa-flask me-1"></i>Test Mode
+                                    </button>
+                                    <div id="nbmPanelTest" style="display:none;margin-top:8px;">
+                                        <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:.7rem;font-weight:700;color:#92400e;margin-bottom:6px;">
+                                            <i class="fas fa-flask me-1"></i>TEST — theo phút
+                                        </div>
+                                        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+                                            <button type="button" class="nbm-min-opt" onclick="nbmSetMin(1,this)">1p</button>
+                                            <button type="button" class="nbm-min-opt" onclick="nbmSetMin(2,this)">2p</button>
+                                            <button type="button" class="nbm-min-opt" onclick="nbmSetMin(5,this)">5p</button>
+                                            <button type="button" class="nbm-min-opt" onclick="nbmSetMin(10,this)">10p</button>
+                                            <button type="button" class="nbm-min-opt" onclick="nbmSetMin(30,this)">30p</button>
+                                        </div>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" id="nbmCustomMin" class="form-control" min="1"
+                                                   placeholder="Số phút..." style="border:1.5px solid #fde68a;border-radius:8px 0 0 8px;"
+                                                   oninput="nbmOnCustomMin(this)">
+                                            <span class="input-group-text fw-bold" style="border:1.5px solid #fde68a;border-left:none;border-radius:0 8px 8px 0;background:#fffbeb;color:#b45309;">Phút</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- QUÉT / CHỌN SÁCH -->
+                                <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.02);">
+                                    <div style="font-size:.78rem;font-weight:700;color:#1e293b;margin-bottom:10px;">
+                                        <i class="fas fa-book me-1" style="color:#3b82f6;"></i>Sách mượn
+                                    </div>
+
+                                    <!-- Inline scan error -->
+                                    <div id="nbmScanError" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:6px 10px;font-size:.78rem;color:#b91c1c;margin-bottom:10px;">
+                                        <i class="fas fa-ban me-1"></i><span id="nbmScanErrMsg"></span>
+                                    </div>
+
+                                    <!-- Scanned books list -->
+                                    <div id="nbmBookList" style="margin-bottom:10px;min-height:30px;"></div>
+
+                                    <!-- Hint when empty -->
+                                    <div id="nbmBookHint" style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;padding:10px;text-align:center;font-size:.75rem;color:#64748b;">
+                                        <i class="fas fa-video fa-lg mb-1 d-block text-muted"></i>
+                                        Webcam đang kích hoạt — quét QR/barcode sách hoặc chọn bên dưới.
+                                    </div>
+
+                                    <!-- OR manual dropdown -->
+                                    <div style="margin-top:12px;border-top:1px dashed #e2e8f0;padding-top:10px;">
+                                        <div style="font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+                                            Chọn sách thủ công
+                                        </div>
+                                        <div id="nbmDropdownContainer">
+                                            <div class="input-group input-group-sm mb-2 nbm-book-row">
+                                                <span class="input-group-text bg-white"><i class="fas fa-book text-success"></i></span>
+                                                <select class="form-select nbm-book-select" style="border:1.5px solid #e2e8f0;">
+                                                    <option value="">-- Chọn sách --</option>
+                                                    <option th:each="b : ${books}" th:value="${b.bookId}"
+                                                            th:text="${b.title} + ' — ' + ${b.author}"></option>
+                                                </select>
+                                                <button type="button" class="btn btn-outline-danger nbm-rm-btn" disabled>
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button type="button" onclick="nbmAddDropdown()"
+                                                style="font-size:.7rem;background:transparent;border:1.5px solid #6366f1;border-radius:6px;color:#6366f1;padding:3px 10px;cursor:pointer;">
+                                            <i class="fas fa-plus me-1"></i>Thêm sách
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="px-3 py-3 border-top mt-auto" style="background:#f8fafc;display:flex;justify-content:flex-end;">
+                            <button type="button" onclick="submitNewBorrow()"
+                                    class="btn fw-bold px-4 rounded-3"
+                                    style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border:none;">
+                                <i class="fas fa-check-circle me-1"></i>Xác Nhận & Phát Phiếu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOOTER: submit button -->
+                <div class="p-3 border-top mt-auto" id="submitArea" style="display:none;">
+                    <div class="d-flex align-items-center justify-content-between gap-3">
+                        <div style="font-size:.82rem;color:#64748b;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span id="submitHint">Hoàn tất quét tất cả sách để xác nhận.</span>
+                        </div>
+                        <button type="button" id="btnConfirmDeliver" class="btn fw-bold px-4 rounded-3"
+                                style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;white-space:nowrap;"
+                                onclick="openConfirmModal()" disabled>
+                            <i class="fas fa-check-double me-1"></i>Xác Nhận Giao Sách
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /row -->
+</div><!-- /container -->
+
+
+
+
+
+
+
+
+
+<!-- ══════════ MODAL XÁC NHẬN GIAO SÁCH ══════════ -->
+<div class="modal fade" id="confirmDeliverModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content" style="border-radius:20px;border:none;overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;padding:1.2rem 1.5rem;">
+                <h5 class="modal-title fw-800 mb-0">
+                    <i class="fas fa-check-double me-2"></i>Xác Nhận Giao Sách
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+
+                <!-- Reader summary -->
+                <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:12px 16px;margin-bottom:1rem;">
+                    <div style="font-size:.72rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+                        <i class="fas fa-user me-1"></i>Độc giả nhận sách
+                    </div>
+                    <div style="font-size:1rem;font-weight:800;color:#14532d;" id="confirmReaderName">—</div>
+                    <div style="font-size:.78rem;color:#166534;" id="confirmStudentId">—</div>
+                </div>
+
+                <!-- Books confirm list -->
+                <div style="margin-bottom:1rem;">
+                    <div style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+                        <i class="fas fa-book me-1"></i>Sách sẽ giao
+                    </div>
+                    <ul id="confirmBookList" style="list-style:none;padding:0;margin:0;"></ul>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Mode tabs -->
+                <div style="display:flex;gap:8px;margin-bottom:1rem;">
+                    <button type="button" id="ctabNormal" onclick="switchCTab('normal')"
+                        style="flex:1;padding:8px;border-radius:10px;border:2px solid #16a34a;background:#f0fdf4;color:#16a34a;font-weight:700;font-size:.82rem;cursor:pointer;">
+                        <i class="fas fa-calendar-alt me-1"></i>Bình thường
+                    </button>
+                    <button type="button" id="ctabTest" onclick="switchCTab('test')"
+                        style="flex:1;padding:8px;border-radius:10px;border:2px solid #e2e8f0;background:#f8fafc;color:#94a3b8;font-weight:700;font-size:.82rem;cursor:pointer;">
+                        <i class="fas fa-flask me-1"></i>Test Mode ⚡
+                    </button>
+                </div>
+
+                <!-- Normal: days -->
+                <div id="cpanelNormal">
+                    <p class="fw-bold mb-2" style="font-size:.85rem;color:#1e293b;">
+                        <i class="fas fa-calendar-alt me-1 text-success"></i>Chọn thời hạn mượn:
+                    </p>
+                    <div class="text-center mb-3">
+                        <div class="days-option-sm selected" onclick="selectDaysCfm(7,this)">7 ngày<small>Tiêu chuẩn</small></div>
+                        <div class="days-option-sm" onclick="selectDaysCfm(14,this)">14 ngày<small>Mở rộng</small></div>
+                        <div class="days-option-sm" onclick="selectDaysCfm(30,this)">30 ngày<small>Dài hạn</small></div>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="cfmCustomDays" class="form-control" min="1" max="90"
+                               placeholder="Hoặc nhập số ngày..." style="border-radius:12px 0 0 12px;border:2px solid #e2e8f0;"
+                               oninput="onCfmCustomDays(this)">
+                        <span class="input-group-text fw-bold" style="border:2px solid #e2e8f0;border-left:none;border-radius:0 12px 12px 0;">Ngày</span>
+                    </div>
+                </div>
+
+                <!-- Test: minutes -->
+                <div id="cpanelTest" style="display:none;">
+                    <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:.78rem;font-weight:700;color:#92400e;">
+                        <i class="fas fa-flask me-1"></i>TEST MODE — chỉ để kiểm tra logic quá hạn
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                        <button type="button" class="test-opt-sm" onclick="selectMinCfm(1,this)">1 phút</button>
+                        <button type="button" class="test-opt-sm" onclick="selectMinCfm(2,this)">2 phút</button>
+                        <button type="button" class="test-opt-sm" onclick="selectMinCfm(5,this)">5 phút</button>
+                        <button type="button" class="test-opt-sm" onclick="selectMinCfm(10,this)">10 phút</button>
+                        <button type="button" class="test-opt-sm" onclick="selectMinCfm(30,this)">30 phút</button>
+                        <button type="button" class="test-opt-sm" onclick="selectMinCfm(60,this)">1 giờ</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="cfmCustomMin" class="form-control" min="1"
+                               placeholder="Hoặc nhập số phút..." style="border-radius:12px 0 0 12px;border:2px solid #fde68a;"
+                               oninput="onCfmCustomMin(this)">
+                        <span class="input-group-text fw-bold" style="border:2px solid #fde68a;border-left:none;border-radius:0 12px 12px 0;background:#fffbeb;color:#b45309;">Phút</span>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer" style="border:none;padding:1rem 1.5rem 1.5rem;">
+                <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Hủy</button>
+                <!-- POST to /admin/borrow/save (DirectBorrowDto) or /admin/borrow/{id}/confirm -->
+                <form id="confirmDeliverForm" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="borrowDays"    id="cfmBorrowDays" value="7"/>
+                    <input type="hidden" name="borrowMinutes" id="cfmBorrowMin"  value="0"/>
+                    <input type="hidden" name="readerId"      id="cfmReaderId"   value=""/>
+                    <!-- bookIds array filled dynamically -->
+                    <div id="cfmBookIdsContainer"></div>
+                    <button type="submit" class="btn btn-success fw-bold px-4 rounded-3">
+                        <i class="fas fa-paper-plane me-1"></i>Xác Nhận Giao Sách
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/*<![CDATA[*/
+/*--------------------------
+  STATE
+--------------------------*/
+let currentMode  = 'card'; // 'card' | 'book'
+let lastQR       = '';
+let qrCooldown   = false;  // prevent duplicate scans
+
+// Reader state
+let reader = null; // { userId, fullName, email, studentId, photoUrl, isActive, groupName }
+
+// Borrow mode:
+//   'reserved'   → phiếu "Đã đặt chỗ" → chỉ cần confirm borrowId
+//   'new'        → tạo mới → cần readerId + bookIds
+let borrowMode   = null;
+let reservedBorrowId = null;
+
+// Books to deliver
+// Each: { bookId, title, barcode, copyId, scanned }
+let expectedBooks = [];
+// Extra books added by scanning (new borrow mode only)
+let scannedNew    = [];
+
+let cfmSelectedDays = 7;
+let cfmSelectedMin  = 0;
+
+/*--------------------------
+  CAMERA
+--------------------------*/
+let stream = null;
+let scanInterval = null;
+
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        const video = document.getElementById('camVideo');
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            document.getElementById('camStatus').innerHTML =
+                '<i class="fas fa-circle blink me-1" style="color:#22c55e;font-size:.6rem;"></i>Camera đang hoạt động';
+            startScanLoop();
+        };
+    } catch(e) {
+        document.getElementById('camStatus').innerHTML =
+            '<i class="fas fa-exclamation-triangle me-1" style="color:#fbbf24;"></i>Không thể truy cập camera: ' + e.message;
+    }
+}
+
+function startScanLoop() {
+    if (scanInterval) clearInterval(scanInterval);
+    scanInterval = setInterval(scanFrame, 180);
+}
+
+function scanFrame() {
+    const video  = document.getElementById('camVideo');
+    const canvas = document.getElementById('camCanvas');
+    if (!video.videoWidth) return;
+
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+
+    if (code && code.data && !qrCooldown) {
+        const val = code.data.trim();
+        if (val !== lastQR) {
+            lastQR = val;
+            qrCooldown = true;
+            setTimeout(() => { qrCooldown = false; lastQR = ''; }, 2200);
+            handleQR(val);
+        }
+    }
+}
+
+function flashCamera(color) {
+    const el = document.getElementById(color === 'green' ? 'flashGreen' : 'flashRed');
+    el.classList.add('flash-active');
+    setTimeout(() => el.classList.remove('flash-active'), 260);
+}
+
+/*--------------------------
+  MODE SWITCH
+--------------------------*/
+function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('tabCard').classList.toggle('active', mode === 'card');
+    document.getElementById('tabBook').classList.toggle('active', mode === 'book');
+    document.getElementById('camStatus').innerHTML =
+        mode === 'card'
+            ? '<i class="fas fa-id-card me-1"></i>Hướng thẻ QR vào khung để quét'
+            : '<i class="fas fa-barcode me-1"></i>Hướng mã QR/barcode sách vào khung';
+    updateCamStatusStyle(mode);
+}
+
+function updateCamStatusStyle(mode) {
+    const s = document.getElementById('camStatus');
+    s.style.background = mode === 'card'
+        ? 'linear-gradient(transparent,rgba(99,102,241,.75))'
+        : 'linear-gradient(transparent,rgba(37,99,235,.75))';
+}
+
+/*--------------------------
+  QR HANDLER
+--------------------------*/
+function handleQR(val) {
+    if (currentMode === 'card') {
+        handleCardQR(val);
+    } else {
+        handleBookQR(val);
+    }
+}
+
+async function handleCardQR(qr) {
+    if (reader) return; // already have a reader
+
+    // Lọc mã QR để loại bỏ các mã không hợp lệ (mã ngân hàng, link web, etc.)
+    if (!qr || !qr.startsWith('LIB-USR-')) {
+        flashCamera('red');
+        showReaderNotFound('Mã vừa quét không phải Thẻ Thư Viện hợp lệ!');
+        document.getElementById('camStatus').innerHTML =
+            '<i class="fas fa-exclamation-triangle me-1 text-warning"></i>Sai định dạng thẻ';
+        setTimeout(() => {
+            if (!reader) {
+                document.getElementById('camStatus').innerHTML =
+                    '<i class="fas fa-id-card me-1"></i>Hướng thẻ QR vào khung để quét';
+            }
+        }, 3000);
+        return;
+    }
+
+    document.getElementById('camStatus').innerHTML =
+        '<i class="fas fa-spinner fa-spin me-1"></i>Đang tra cứu thẻ...';
+
+    try {
+        const res  = await fetch('/admin/borrow/api/lookup-card?qr=' + encodeURIComponent(qr));
+        const data = await res.json();
+
+        if (data.found) {
+            flashCamera('green');
+            reader = data;
+            showReaderFound(data);
+            await loadReaderBorrows(data.userId);
+        } else {
+            flashCamera('red');
+            showReaderNotFound(data.error || 'Không tìm thấy thẻ');
+        }
+    } catch(e) {
+        flashCamera('red');
+        showReaderNotFound('Lỗi kết nối: ' + e.message);
+    }
+
+    document.getElementById('camStatus').innerHTML =
+        '<i class="fas fa-circle blink me-1" style="color:#22c55e;font-size:.6rem;"></i>Camera đang hoạt động';
+}
+
+async function handleBookQR(barcode) {
+    if (!reader) {
+        // Alert user to scan card first
+        showWrongScan('Bạn cần quét thẻ học sinh trước khi quét sách!');
+        flashCamera('red');
+        return;
+    }
+
+    // Lọc mã QR rác: Mã quá dài (ngân hàng/vcard thường > 100 ký tự), hoặc URL
+    if (!barcode || barcode.length > 40 || barcode.toLowerCase().startsWith('http')) {
+        flashCamera('red');
+        showWrongScan('Mã vừa quét không giống mã vạch sách hợp lệ!');
+        return;
+    }
+
+    try {
+        const res  = await fetch('/admin/borrow/api/lookup-book?barcode=' + encodeURIComponent(barcode));
+        const data = await res.json();
+
+        if (!data.found) {
+            flashCamera('red');
+            showWrongScan((data.error || 'Không nhận dạng được mã: ' + barcode));
+            return;
+        }
+
+        // Reserved mode: check if barcode matches expected books
+        if (borrowMode === 'reserved') {
+            const match = expectedBooks.find(b => b.barcode === barcode || String(b.copyId) === String(data.copyId));
+            if (!match) {
+                flashCamera('red');
+                const titles = expectedBooks.filter(b=>!b.scanned).map(b=>b.title).join(', ');
+                showWrongScan(`Mang nhầm sách! Bạn đang quét: "${data.title}". Sách cần giao: ${titles}.`);
+                return;
+            }
+            if (match.scanned) {
+                showWrongScan(`Sách "${match.title}" đã được quét rồi.`);
+                return;
+            }
+            flashCamera('green');
+            match.scanned = true;
+            hideWrongScan();
+            renderChecklist();
+        } else {
+            // New borrow mode: add to list if not already
+            const existing = scannedNew.find(b => String(b.copyId) === String(data.copyId));
+            if (existing) {
+                showWrongScan(`Sách "${data.title}" đã được thêm vào phiếu rồi.`);
+                return;
+            }
+            flashCamera('green');
+            scannedNew.push({ ...data, scanned: true });
+            hideWrongScan();
+            renderNewBorrowList();
+        }
+
+        updateProgress();
+        checkAllScanned();
+
+    } catch(e) {
+        flashCamera('red');
+        showWrongScan('Lỗi kết nối: ' + e.message);
+    }
+}
+
+/*--------------------------
+  LOAD READER BORROWS
+--------------------------*/
+async function loadReaderBorrows(userId) {
+    try {
+        const res  = await fetch('/admin/borrow/api/reserved-borrow?userId=' + userId);
+        const data = await res.json();
+
+        if (data.found) {
+            borrowMode       = 'reserved';
+            reservedBorrowId = data.borrowId;
+            expectedBooks    = (data.books || []).map(b => ({ ...b, scanned: false }));
+            showReservedSection();
+        } else {
+            borrowMode    = 'new';
+            expectedBooks = [];
+            scannedNew    = [];
+            showNewBorrowSection();
+        }
+    } catch(e) {
+        borrowMode    = 'new';
+        expectedBooks = [];
+        scannedNew    = [];
+        showNewBorrowSection();
+    }
+    updatePhase();
+}
+
+/*--------------------------
+  EMBEDDED BORROW DATA (legacy - not used)
+--------------------------*/
+function findReservedBorrow(userId) {
+    if (!window._borrowRows) return null;
+    return window._borrowRows.find(r => r.userId === userId && r.status === 'Đã đặt chỗ') || null;
+}
+
+
+/*--------------------------
+  RENDER FUNCTIONS
+--------------------------*/
+function showReaderFound(data) {
+    document.getElementById('readerPlaceholder').style.display   = 'none';
+    document.getElementById('readerNotFoundCard').style.display  = 'none';
+    document.getElementById('readerFoundCard').style.display     = '';
+
+    document.getElementById('readerName').textContent      = data.fullName;
+    document.getElementById('readerStudentId').textContent = data.studentId || '—';
+    document.getElementById('readerEmail').textContent     = data.email    || '—';
+    document.getElementById('readerUserId').textContent    = '#' + data.userId;
+    document.getElementById('readerGroup').textContent     = data.groupName || 'Không có nhóm';
+
+    const activeEl = document.getElementById('readerActive');
+    if (data.isActive) {
+        activeEl.textContent = '✅ Hoạt động';
+        activeEl.style.cssText = 'background:#dcfce7;color:#166534;border-radius:20px;padding:3px 10px;';
+    } else {
+        activeEl.textContent = '🚫 Vô hiệu';
+        activeEl.style.cssText = 'background:#fee2e2;color:#991b1b;border-radius:20px;padding:3px 10px;';
+    }
+
+    if (data.photoUrl) {
+        document.getElementById('readerPhoto').src         = data.photoUrl;
+        document.getElementById('readerPhoto').style.display = '';
+        document.getElementById('readerAvatarPH').style.display = 'none';
+    } else {
+        document.getElementById('readerPhoto').style.display = 'none';
+        document.getElementById('readerAvatarPH').style.display = '';
+        document.getElementById('readerAvatarPH').textContent = (data.fullName||'?')[0].toUpperCase();
+    }
+
+    // Show checklist area
+    document.getElementById('waitReaderState').style.display    = 'none';
+    document.getElementById('bookChecklistArea').style.display  = '';
+    document.getElementById('submitArea').style.display         = '';
+    updateProgress();
+}
+
+function showReaderNotFound(msg) {
+    document.getElementById('readerPlaceholder').style.display   = 'none';
+    document.getElementById('readerFoundCard').style.display     = 'none';
+    document.getElementById('readerNotFoundCard').style.display  = '';
+    document.getElementById('readerErrorMsg').textContent = msg;
+}
+
+function resetReader() {
+    reader = null;
+    borrowMode = null;
+    reservedBorrowId = null;
+    expectedBooks = [];
+    scannedNew = [];
+
+    document.getElementById('readerPlaceholder').style.display  = '';
+    document.getElementById('readerFoundCard').style.display    = 'none';
+    document.getElementById('readerNotFoundCard').style.display = 'none';
+    document.getElementById('waitReaderState').style.display    = '';
+    document.getElementById('bookChecklistArea').style.display  = 'none';
+    document.getElementById('submitArea').style.display         = 'none';
+    document.getElementById('progressSection').style.display    = 'none';
+    document.getElementById('progressText').textContent         = '';
+    document.getElementById('btnConfirmDeliver').disabled        = true;
+    document.getElementById('reservedBooksSection').style.display = 'none';
+    document.getElementById('newBorrowSection').style.display     = '';
+    document.getElementById('newBorrowBookList').innerHTML        = '';
+    document.getElementById('newScanHint').style.display         = '';
+    hideWrongScan();
+    updatePhase();
+    switchMode('card');
+}
+
+function showReservedSection() {
+    document.getElementById('reservedBooksSection').style.display = '';
+    document.getElementById('newBorrowSection').style.display     = 'none';
+    document.getElementById('progressSection').style.display      = '';
+    renderChecklist();
+    // Auto switch to book scan mode
+    switchMode('book');
+    updateCamStatusStyle('book');
+    updatePhase();
+}
+
+function showNewBorrowSection() {
+    document.getElementById('reservedBooksSection').style.display = 'none';
+    document.getElementById('newBorrowSection').style.display     = 'flex';
+    
+    // Hide standard submit Area because new borrow has its own submit button in the panel
+    document.getElementById('submitArea').style.display           = 'none';
+    document.getElementById('progressSection').style.display      = 'none';
+    
+    initNewBorrowPanel();
+    
+    switchMode('book');
+    updatePhase();
+}
+
+function renderChecklist() {
+    const ul = document.getElementById('reservedBookList');
+    ul.innerHTML = '';
+    expectedBooks.forEach(b => {
+        const li = document.createElement('li');
+        li.className = 'book-item ' + (b.scanned ? 'scanned' : 'pending');
+        li.innerHTML = `
+            <div class="book-item-icon">
+                <i class="fas ${b.scanned ? 'fa-check' : 'fa-book'}"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div class="book-item-label">${escHtml(b.title)}</div>
+                <div class="book-item-barcode">${escHtml(b.barcode || '')}</div>
+            </div>
+            <span class="book-status-badge ${b.scanned ? 'badge-scanned' : 'badge-pending'}">
+                ${b.scanned ? '✔ Đã nhận' : '❌ Chưa nhận'}
+            </span>`;
+        ul.appendChild(li);
+    });
+}
+
+function renderNewBorrowList() {
+    const container = document.getElementById('nbmBookList');
+    container.innerHTML = '';
+    scannedNew.forEach(b => {
+        const div = document.createElement('div');
+        div.className = 'book-item scanned mb-2';
+        div.innerHTML = `
+            <div class="book-item-icon"><i class="fas fa-check"></i></div>
+            <div style="flex:1;min-width:0;">
+                <div class="book-item-label">${escHtml(b.title)}</div>
+                <div class="book-item-barcode">${escHtml(b.barcode || '')}</div>
+            </div>
+            <button type="button" onclick="removeNewBook('${b.copyId}')"
+                    style="background:transparent;border:none;color:#ef4444;font-size:.85rem;cursor:pointer;padding:0 4px;">
+                <i class="fas fa-times"></i>
+            </button>`;
+        container.appendChild(div);
+    });
+    document.getElementById('nbmBookHint').style.display = scannedNew.length > 0 ? 'none' : '';
+    // Also build hidden inputs for the form
+    const formCont = document.getElementById('nbmBookIdsContainer');
+    formCont.innerHTML = '';
+    scannedNew.forEach(b => {
+        const inp = document.createElement('input');
+        inp.type  = 'hidden';
+        inp.name  = 'bookIds';
+        inp.value = b.bookId;
+        formCont.appendChild(inp);
+    });
+}
+
+function removeNewBook(copyId) {
+    scannedNew = scannedNew.filter(b => String(b.copyId) !== String(copyId));
+    renderNewBorrowList();
+}
+
+function initNewBorrowPanel() {
+    if (!reader) return;
+    
+    // Fill reader info
+    document.getElementById('nbmReaderId').value         = reader.userId;
+    
+    // Reset form
+    document.getElementById('nbmBorrowDays').value = 7;
+    document.getElementById('nbmBorrowMin').value  = 0;
+    document.getElementById('nbmCustomDays').value = '';
+    document.getElementById('nbmCustomMin').value  = '';
+    
+    document.querySelectorAll('.nbm-day-opt').forEach((e,i) => e.classList.toggle('selected', i===0));
+    document.querySelectorAll('.nbm-min-opt').forEach(e => e.classList.remove('selected'));
+    
+    document.getElementById('nbmPanelNormal').style.display = '';
+    document.getElementById('nbmPanelTest').style.display   = 'none';
+    
+    renderNewBorrowList();
+}
+
+function submitNewBorrow() {
+    const dropdownSelects = document.querySelectorAll('.nbm-book-select');
+    let hasDropdownSelection = false;
+    dropdownSelects.forEach(sel => {
+        if (sel.value) hasDropdownSelection = true;
+    });
+    
+    if (scannedNew.length === 0 && !hasDropdownSelection) {
+        document.getElementById('nbmScanErrMsg').textContent = 'Vui lòng quét hoặc chọn ít nhất 1 cuốn sách!';
+        document.getElementById('nbmScanError').style.display = 'block';
+        setTimeout(() => { document.getElementById('nbmScanError').style.display = 'none'; }, 4000);
+        return;
+    }
+    
+    document.getElementById('newBorrowForm').submit();
+}
+
+function nbmSetDays(days, el) {
+    document.getElementById('nbmBorrowDays').value = days;
+    document.getElementById('nbmBorrowMin').value  = 0;
+    document.getElementById('nbmCustomDays').value = '';
+    document.querySelectorAll('.nbm-day-opt').forEach(e => e.classList.remove('selected'));
+    if(el) el.classList.add('selected');
+}
+
+function nbmOnCustomDays(input) {
+    const v = parseInt(input.value);
+    if (v > 0) {
+        document.getElementById('nbmBorrowDays').value = v;
+        document.getElementById('nbmBorrowMin').value  = 0;
+        document.querySelectorAll('.nbm-day-opt').forEach(e => e.classList.remove('selected'));
+    }
+}
+
+function nbmToggleTest() {
+    const pN = document.getElementById('nbmPanelNormal');
+    const pT = document.getElementById('nbmPanelTest');
+    if (pT.style.display === 'none') {
+        pN.style.display = 'none';
+        pT.style.display = '';
+        document.getElementById('nbmBorrowDays').value = 0;
+        document.getElementById('nbmBorrowMin').value  = 1;
+        document.querySelectorAll('.nbm-min-opt').forEach((e,i) => e.classList.toggle('selected', i===0));
+    } else {
+        pT.style.display = 'none';
+        pN.style.display = '';
+        nbmSetDays(7);
+        document.querySelectorAll('.nbm-day-opt').forEach((e,i) => e.classList.toggle('selected', i===0));
+    }
+}
+
+function nbmSetMin(m, el) {
+    document.getElementById('nbmBorrowMin').value = m;
+    document.getElementById('nbmBorrowDays').value = 0;
+    document.getElementById('nbmCustomMin').value = '';
+    document.querySelectorAll('.nbm-min-opt').forEach(e => e.classList.remove('selected'));
+    if(el) el.classList.add('selected');
+}
+
+function nbmOnCustomMin(input) {
+    const v = parseInt(input.value);
+    if (v > 0) {
+        document.getElementById('nbmBorrowMin').value = v;
+        document.getElementById('nbmBorrowDays').value = 0;
+        document.querySelectorAll('.nbm-min-opt').forEach(e => e.classList.remove('selected'));
+    }
+}
+
+function nbmAddDropdown() {
+    const row = document.querySelector('.nbm-book-row');
+    if(row) {
+        const clone = row.cloneNode(true);
+        clone.querySelector('select').value = '';
+        clone.querySelector('.nbm-rm-btn').disabled = false;
+        
+        // Add event listener to clone remove btn
+        clone.querySelector('.nbm-rm-btn').onclick = function() {
+            clone.remove();
+        };
+        
+        document.getElementById('nbmDropdownContainer').appendChild(clone);
+    }
+}
+
+// Add remove event for initial dropdown, wait we can't delete the only one
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.nbm-rm-btn')) {
+        const row = e.target.closest('.nbm-book-row');
+        const allRows = document.querySelectorAll('.nbm-book-row');
+        if (allRows.length > 1) {
+            row.remove();
+        }
+    }
+});
+
+/*--------------------------
+  PROGRESS
+--------------------------*/
+function updateProgress() {
+    if (borrowMode === 'reserved') {
+        const total   = expectedBooks.length;
+        const scanned = expectedBooks.filter(b=>b.scanned).length;
+        const pct     = total > 0 ? Math.round(scanned/total*100) : 0;
+
+        document.getElementById('progressFill').style.width  = pct + '%';
+        document.getElementById('progressCount').textContent = `Đã nhận: ${scanned} / ${total} sách`;
+        document.getElementById('progressText').textContent  = `${scanned}/${total}`;
+        document.getElementById('submitHint').textContent    =
+            scanned === total ? '✅ Đã quét đủ sách, có thể xác nhận!' : `Còn ${total-scanned} sách chưa quét.`;
+    } else if (borrowMode === 'new') {
+        const cnt = scannedNew.length;
+        document.getElementById('progressText').textContent = cnt > 0 ? cnt + ' sách' : '';
+        document.getElementById('submitHint').textContent   =
+            cnt > 0 ? `Đã thêm ${cnt} sách, có thể xác nhận.` : 'Quét sách để thêm vào phiếu.';
+    }
+}
+
+function checkAllScanned() {
+    const btn = document.getElementById('btnConfirmDeliver');
+    if (borrowMode === 'reserved') {
+        const allDone = expectedBooks.length > 0 && expectedBooks.every(b=>b.scanned);
+        btn.disabled = !allDone;
+    } else if (borrowMode === 'new') {
+        btn.disabled = scannedNew.length === 0;
+    }
+}
+
+/*--------------------------
+  PHASE BADGE
+--------------------------*/
+function updatePhase() {
+    const badge = document.getElementById('phaseBadge');
+    const txt   = document.getElementById('phaseText');
+
+    badge.className = 'phase-badge';
+    if (!reader) {
+        badge.classList.add('phase-def');
+        txt.textContent = 'Chờ quét thẻ';
+    } else if (borrowMode === 'reserved') {
+        const done = expectedBooks.filter(b=>b.scanned).length;
+        if (done < expectedBooks.length) {
+            badge.classList.add('phase-book');
+            txt.textContent = 'Đang quét sách';
+        } else {
+            badge.classList.add('phase-done');
+            txt.textContent = 'Sẵn sàng xác nhận';
+        }
+    } else {
+        badge.classList.add('phase-book');
+        txt.textContent = 'Quét sách mới';
+    }
+}
+
+/*--------------------------
+  INLINE ERROR
+--------------------------*/
+function showWrongScan(msg) {
+    document.getElementById('wrongScanMsg').textContent = msg;
+    document.getElementById('wrongScanError').classList.add('show');
+    setTimeout(hideWrongScan, 5000);
+}
+function hideWrongScan() {
+    document.getElementById('wrongScanError').classList.remove('show');
+}
+
+/*--------------------------
+  CONFIRM MODAL
+--------------------------*/
+function openConfirmModal() {
+    if (!reader) return;
+
+    // Fill reader info
+    document.getElementById('confirmReaderName').textContent =
+        reader.fullName + ' — ID #' + reader.userId;
+    document.getElementById('confirmStudentId').textContent  = 'Mã HS: ' + (reader.studentId||'—');
+
+    // Fill book list
+    const ul = document.getElementById('confirmBookList');
+    ul.innerHTML = '';
+    const books = borrowMode === 'reserved' ? expectedBooks : scannedNew;
+    books.forEach(b => {
+        const li = document.createElement('li');
+        li.style.cssText = 'padding:5px 0;display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;color:#166534;';
+        li.innerHTML = `<i class="fas fa-check-circle" style="color:#22c55e;"></i>${escHtml(b.title)}`;
+        ul.appendChild(li);
+    });
+
+    // Reset form
+    document.getElementById('cfmBorrowDays').value = 7;
+    document.getElementById('cfmBorrowMin').value  = 0;
+    cfmSelectedDays = 7;
+    cfmSelectedMin  = 0;
+    document.querySelectorAll('.days-option-sm').forEach((e,i) => e.classList.toggle('selected',i===0));
+    document.querySelectorAll('.test-opt-sm').forEach(e => e.classList.remove('selected'));
+    switchCTab('normal');
+
+    // Set form action
+    if (borrowMode === 'reserved') {
+        // Confirm existing borrow
+        document.getElementById('confirmDeliverForm').action = '/admin/borrow/' + reservedBorrowId + '/confirm';
+        document.getElementById('cfmReaderId').value = '';
+        document.getElementById('cfmBookIdsContainer').innerHTML = '';
+    } else {
+        // Create new borrow
+        document.getElementById('confirmDeliverForm').action = '/admin/borrow/save';
+        document.getElementById('cfmReaderId').value = reader.userId;
+        const cont = document.getElementById('cfmBookIdsContainer');
+        cont.innerHTML = '';
+        // For new borrow we need bookIds (not copyIds)
+        scannedNew.forEach(b => {
+            const inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = 'bookIds';
+            inp.value = b.bookId;
+            cont.appendChild(inp);
+        });
+    }
+
+    new bootstrap.Modal(document.getElementById('confirmDeliverModal')).show();
+}
+
+function switchCTab(tab) {
+    const isNormal = tab === 'normal';
+    document.getElementById('cpanelNormal').style.display = isNormal ? '' : 'none';
+    document.getElementById('cpanelTest').style.display   = isNormal ? 'none' : '';
+
+    const n = document.getElementById('ctabNormal');
+    const t = document.getElementById('ctabTest');
+    if (isNormal) {
+        n.style.borderColor = '#16a34a'; n.style.background = '#f0fdf4'; n.style.color = '#16a34a';
+        t.style.borderColor = '#e2e8f0'; t.style.background = '#f8fafc'; t.style.color = '#94a3b8';
+        document.getElementById('cfmBorrowMin').value  = 0;
+        document.getElementById('cfmBorrowDays').value = cfmSelectedDays;
+    } else {
+        t.style.borderColor = '#f59e0b'; t.style.background = '#fffbeb'; t.style.color = '#b45309';
+        n.style.borderColor = '#e2e8f0'; n.style.background = '#f8fafc'; n.style.color = '#94a3b8';
+        document.getElementById('cfmBorrowMin').value  = cfmSelectedMin || 1;
+    }
+}
+
+function selectDaysCfm(days, el) {
+    cfmSelectedDays = days;
+    document.getElementById('cfmBorrowDays').value = days;
+    document.getElementById('cfmBorrowMin').value  = 0;
+    document.getElementById('cfmCustomDays').value = '';
+    document.querySelectorAll('.days-option-sm').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+function onCfmCustomDays(input) {
+    const v = parseInt(input.value);
+    if (v > 0) {
+        cfmSelectedDays = v;
+        document.getElementById('cfmBorrowDays').value = v;
+        document.getElementById('cfmBorrowMin').value  = 0;
+        document.querySelectorAll('.days-option-sm').forEach(e => e.classList.remove('selected'));
+    }
+}
+
+function selectMinCfm(m, el) {
+    cfmSelectedMin = m;
+    document.getElementById('cfmBorrowMin').value = m;
+    document.getElementById('cfmCustomMin').value = '';
+    document.querySelectorAll('.test-opt-sm').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+function onCfmCustomMin(input) {
+    const v = parseInt(input.value);
+    if (v > 0) {
+        cfmSelectedMin = v;
+        document.getElementById('cfmBorrowMin').value = v;
+        document.querySelectorAll('.test-opt-sm').forEach(e => e.classList.remove('selected'));
+    }
+}
+
+/*--------------------------
+  UTIL
+--------------------------*/
+function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/*--------------------------
+  EMBEDDED BORROW ROWS
+  (read from hidden DOM elements injected by Thymeleaf)
+--------------------------*/
+function buildBorrowRows() {
+    const rows = [];
+    document.querySelectorAll('[data-borrow-id]').forEach(function(el) {
+        const bid    = parseInt(el.dataset.borrowId);
+        const uid    = parseInt(el.dataset.userId);
+        const status = el.dataset.status;
+        const books  = [];
+        el.querySelectorAll('[data-copy-id]').forEach(function(b) {
+            books.push({
+                bookId  : parseInt(b.dataset.bookId),
+                title   : b.dataset.title,
+                barcode : b.dataset.barcode,
+                copyId  : parseInt(b.dataset.copyId),
+                scanned : false
+            });
+        });
+        rows.push({ borrowId: bid, userId: uid, status: status, books: books });
+    });
+    window._borrowRows = rows;
+}
+
+
+/*--------------------------
+  INIT
+--------------------------*/
+document.addEventListener('DOMContentLoaded', function() {
+    startCamera();
+    switchMode('card');
+    updatePhase();
+});
+
+window.addEventListener('beforeunload', function() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+});
+/*]]>*/
+</script>
+</body>
+</html>
+

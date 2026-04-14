@@ -162,7 +162,8 @@ CREATE TABLE BorrowDetails (
     ReturnDate          DATETIME2     NULL,
     ReturnPhysicalState NVARCHAR(50)  NULL,
     ViolationNote       NVARCHAR(500) NULL,
-    AssessedFine        DECIMAL(18,2) NULL DEFAULT 0
+    AssessedFine        DECIMAL(18,2) NULL DEFAULT 0,
+    FinePaid            BIT           NULL DEFAULT 0   -- 1 = đã nộp phạt (admin xác nhận), 0 = chưa
 );
 GO
 

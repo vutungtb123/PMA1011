@@ -20,13 +20,15 @@ public class FileStorageService {
         try {
             Files.createDirectories(this.fileStorageLocation);
             Files.createDirectories(this.fileStorageLocation.resolve("books"));
+            Files.createDirectories(this.fileStorageLocation.resolve("users"));
         } catch (Exception ex) {
             throw new RuntimeException("Could not create the directory where the uploaded files will be stored.", ex);
         }
     }
 
     public String storeFile(MultipartFile file, String subDir) {
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String rawFileName = file.getOriginalFilename();
+        String originalFileName = StringUtils.cleanPath(rawFileName != null ? rawFileName : "");
         String fileExtension = "";
         if(originalFileName.contains(".")) {
             fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));

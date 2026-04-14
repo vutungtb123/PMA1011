@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theo Dõi Sách Đang Mượn — SchoolLib</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <style>
+        :root {
+            --primary: #6366f1; --primary-light: #818cf8; --accent: #f59e0b;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-surface: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #94a3b8; --border: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
+
+        .content-wrapper { max-width: 960px; margin: 2.5rem auto; padding: 0 1.25rem; }
+
+        .page-header { margin-bottom: 2rem; }
+        .page-header h1 { font-size: 1.8rem; font-weight: 800; display: flex; align-items: center; gap: 12px; color: #22c55e; }
+        .page-header p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 6px; }
+
+        .custom-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        /* BORROW ITEM CARD */
+        .borrow-item {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px;
+            padding: 20px; margin-bottom: 16px; transition: border-color 0.3s;
+        }
+        .borrow-item:last-child { margin-bottom: 0; }
+        .borrow-item:hover { border-color: rgba(34,197,94,0.3); }
+        .borrow-item-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+        .borrow-id { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; }
+        .borrow-dates { display: flex; gap: 20px; font-size: 0.82rem; color: var(--text-secondary); }
+        .borrow-dates span { display: flex; align-items: center; gap: 5px; }
+        .borrow-dates .date-val { color: var(--text-primary); font-weight: 600; }
+
+        /* BOOK ROW */
+        .book-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+        .book-row + .book-row { border-top: 1px dashed rgba(255,255,255,0.06); }
+        .book-img { width: 38px; height: 54px; object-fit: cover; border-radius: 5px; border: 1px solid var(--border); flex-shrink: 0; }
+        .book-title-link { font-weight: 600; font-size: 0.9rem; color: #fff; text-decoration: none; }
+        .book-title-link:hover { color: var(--primary-light); }
+
+        /* MULTI BADGE */
+        .multi-badge { display: inline-block; font-size: 0.7rem; font-weight: 700; background: rgba(99,102,241,0.12); color: var(--primary-light); border: 1px solid rgba(99,102,241,0.25); padding: 2px 8px; border-radius: 6px; margin-bottom: 10px; }
+
+        /* COUNTDOWN */
+        .countdown-wrap { text-align: right; min-width: 160px; }
+        .countdown-timer {
+            font-family: 'Courier New', monospace; font-size: 1.25rem; font-weight: 700;
+            background: rgba(239,68,68,0.1); padding: 6px 12px; border-radius: 10px;
+            color: #f87171; border: 1px solid rgba(239,68,68,0.2); display: inline-block;
+        }
+        .countdown-timer.safe { color: #34d399; background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); }
+        .countdown-timer.warning { color: #fbbf24; background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.2); }
+        .countdown-label { font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px; display: block; text-align: center; }
+        .due-date-small { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; display: block; }
+
+        /* EMPTY */
+        .empty-state { text-align: center; padding: 3.5rem 2rem; }
+        .empty-state i { font-size: 3.5rem; color: rgba(255,255,255,0.08); margin-bottom: 1rem; display: block; }
+        .empty-state h4 { color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem; }
+        .empty-state p { color: var(--text-secondary); opacity: 0.6; font-size: 0.9rem; }
+
+        /* Progress bar */
+        .time-progress { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.07); margin-top: 6px; overflow: hidden; }
+        .time-progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+    </style>
+</head>
+<body>
+
+<div class="page-layout">
+
+<!-- USER SIDEBAR -->
+<aside class="user-sidebar">
+    <a class="sidebar-brand" href="/dashboard">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">SchoolLib</span><span class="brand-sub">Thư Viện Số</span></div>
+    </a>
+    <div class="sidebar-user-info" th:if="${#authentication.principal instanceof T(com.example.school_library_system.security.CustomUserDetails)}">
+        <div class="user-avatar"><i class="fas fa-user fa-sm"></i></div>
+        <div>
+            <div class="user-name-text" th:text="${#authentication.principal.user.fullName}">Độc giả</div>
+            <div class="user-role-text">Độc Giả</div>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-cat-toggle" id="catToggle">
+            <span>Thể loại</span>
+            <i class="fas fa-chevron-down chevron"></i>
+        </div>
+        <div class="sidebar-cat-menu" id="catMenu">
+            <a href="/dashboard">Tất cả sách</a>
+            <a th:each="cat : ${allCategories}"
+               th:href="@{/dashboard(categoryId=${cat.categoryId})}"
+               th:text="${cat.categoryName}">Thể loại</a>
+        </div>
+        <div class="sidebar-divider"></div>
+        <a href="/phieu-dat-cho" class="sidebar-link"><span>Phiếu Đặt Chỗ</span></a>
+        <a href="/dang-muon" class="sidebar-link active"><span>Đang Mượn</span></a>
+        <a href="/lich-su-muon" class="sidebar-link"><span>Lịch Sử Mượn</span></a>
+        <a href="/lich-su-phat" class="sidebar-link warn"><span>Vi Phạm &amp; Phạt</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout">
+                <i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="user-main">
+<div class="content-wrapper">
+
+    <div class="page-header">
+        <h1><i class="fas fa-book-reader"></i> Theo Dõi Sách Đang Mượn</h1>
+        <p>Xem thời gian còn lại cho từng phiếu mượn. Thời gian được tính từ lúc thủ thư xác nhận giao sách.</p>
+    </div>
+
+    <div class="custom-card">
+        <!-- Empty -->
+        <div th:if="${activeRecords.isEmpty()}" class="empty-state">
+            <i class="fas fa-check-double"></i>
+            <h4>Không có phiếu nào đang mượn</h4>
+            <p>Bạn hiện không có sách nào đang mượn từ thư viện.</p>
+        </div>
+
+        <!-- Borrow items -->
+        <div th:if="${!activeRecords.isEmpty()}">
+            <div th:each="record : ${activeRecords}" class="borrow-item">
+                <div class="borrow-item-header">
+                    <!-- Left: ID + book list -->
+                    <div style="flex: 1;">
+                        <div class="borrow-id">
+                            <i class="fas fa-receipt me-1"></i>Mã phiếu: <strong style="color: #22c55e;" th:text="'#' + ${record.borrowId}"></strong>
+                        </div>
+                        <div class="borrow-dates mt-2">
+                            <span><i class="fas fa-calendar-check" style="color:#22c55e;"></i>
+                                Ngày mượn: <span class="date-val" th:text="${#temporals.format(record.borrowDate, 'dd/MM/yyyy')}"></span>
+                            </span>
+                        </div>
+
+                        <!-- Books in this record -->
+                        <div style="margin-top: 14px;">
+                            <div th:if="${record.details.size() > 1}" class="multi-badge">
+                                <i class="fas fa-layer-group me-1"></i>
+                                <span th:text="${record.details.size()} + ' cuốn trong phiếu này'"></span>
+                            </div>
+                            <div th:each="detail : ${record.details}" class="book-row">
+                                <img th:if="${detail.bookCopy.book.coverImage != null}"
+                                     th:src="${detail.bookCopy.book.coverImage}"
+                                     class="book-img" onerror="this.style.display='none'">
+                                <div th:if="${detail.bookCopy.book.coverImage == null || detail.bookCopy.book.coverImage.isEmpty()}"
+                                     style="width:38px;height:54px;background:#0f172a;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);flex-shrink:0;">
+                                    <i class="fas fa-book" style="font-size:0.9rem;"></i>
+                                </div>
+                                <div>
+                                    <a th:href="@{'/book/' + ${detail.bookCopy.book.bookId}}"
+                                       class="book-title-link"
+                                       th:text="${detail.bookCopy.book.title}">Tên sách</a>
+                                    <small class="text-secondary" th:text="${detail.bookCopy.book.author}"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Countdown -->
+                    <div class="countdown-wrap" th:if="${record.dueDate != null}">
+                        <div class="countdown-timer"
+                             th:attr="data-due=${#temporals.formatISO(record.dueDate)}">
+                            Đang tính...
+                        </div>
+                        <span class="countdown-label">còn lại</span>
+                        <span class="due-date-small">
+                            Hạn: <strong th:text="${#temporals.format(record.dueDate, 'dd/MM/yyyy HH:mm')}"></strong>
+                        </span>
+                        <!-- Progress bar (will be set by JS) -->
+                        <div class="time-progress mt-2">
+                            <div class="time-progress-fill"
+                                 th:attr="data-borrow=${#temporals.formatISO(record.borrowDate)}, data-due=${#temporals.formatISO(record.dueDate)}"
+                                 style="width: 50%; background: #22c55e;"></div>
+                        </div>
+                    </div>
+                    <div class="countdown-wrap" th:if="${record.dueDate == null}">
+                        <span class="text-secondary small">Chưa xác định hạn trả</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div><!-- /user-main -->
+</div><!-- /page-layout -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Category accordion
+    (function() {
+        const toggle = document.getElementById('catToggle');
+        const menu   = document.getElementById('catMenu');
+        if (toggle && menu) {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('open');
+                menu.classList.toggle('open');
+            });
+        }
+    })();
+
+    function updateCountdowns() {
+        const now = new Date().getTime();
+
+        document.querySelectorAll('.countdown-timer').forEach(timer => {
+            const dueStr = timer.getAttribute('data-due');
+            if (!dueStr) return;
+
+            const dueDate = new Date(dueStr).getTime();
+            const distance = dueDate - now;
+
+            if (distance < 0) {
+                timer.innerHTML = 'Quá hạn!';
+                timer.className = 'countdown-timer';
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((distance % (1000 * 60)) / 1000);
+
+            const fH = String(hours).padStart(2, '0');
+            const fM = String(mins).padStart(2, '0');
+            const fS = String(secs).padStart(2, '0');
+
+            timer.innerHTML = days > 0 ? `${days} ngày ${fH}:${fM}:${fS}` : `${fH}:${fM}:${fS}`;
+
+            if (days >= 3)      { timer.className = 'countdown-timer safe'; }
+            else if (days >= 1) { timer.className = 'countdown-timer warning'; }
+            else                { timer.className = 'countdown-timer'; }
+        });
+
+        // Update progress bars
+        document.querySelectorAll('.time-progress-fill').forEach(bar => {
+            const borrowStr = bar.getAttribute('data-borrow');
+            const dueStr = bar.getAttribute('data-due');
+            if (!borrowStr || !dueStr) return;
+
+            const start = new Date(borrowStr).getTime();
+            const end = new Date(dueStr).getTime();
+            const total = end - start;
+            const elapsed = now - start;
+            const pct = Math.min(Math.max((elapsed / total) * 100, 0), 100);
+            const remaining = 100 - pct;
+
+            bar.style.width = remaining + '%';
+            if (remaining > 50)       { bar.style.background = '#22c55e'; }
+            else if (remaining > 20)  { bar.style.background = '#fbbf24'; }
+            else                      { bar.style.background = '#ef4444'; }
+        });
+    }
+
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+</script>
+</body>
+</html>

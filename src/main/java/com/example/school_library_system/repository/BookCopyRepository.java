@@ -12,4 +12,7 @@ public interface BookCopyRepository extends JpaRepository<BookCopy, Integer> {
     long countByBookBookIdAndPhysicalStatus(Integer bookId, String physicalStatus);
     long countByBookBookId(Integer bookId); // Tổng bản sao mọi trạng thái
     boolean existsByBarcode(String barcode); // Kiểm tra trùng mã vạch
+
+    /** Tra cứu bản sao sách theo mã barcode */
+    java.util.Optional<BookCopy> findByBarcode(String barcode);
 }

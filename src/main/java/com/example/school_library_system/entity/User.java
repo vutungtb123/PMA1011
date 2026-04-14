@@ -53,6 +53,18 @@ public class User {
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
+    /** Mã học sinh / Mã thẻ thư viện (duy nhất) */
+    @Column(name = "StudentId", unique = true, length = 50)
+    private String studentId;
+
+    /** URL ảnh thẻ học sinh */
+    @Column(name = "PhotoUrl", length = 255)
+    private String photoUrl;
+
+    /** Dữ liệu nội dung QR của thẻ (dạng LIB-USR-{userId}-{studentId}) */
+    @Column(name = "CardQrData", length = 255)
+    private String cardQrData;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

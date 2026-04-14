@@ -9,6 +9,7 @@ import com.example.school_library_system.entity.User;
 import com.example.school_library_system.entity.WaitlistRecord;
 import com.example.school_library_system.repository.BookRepository;
 import com.example.school_library_system.repository.BookCopyRepository;
+import com.example.school_library_system.repository.BorrowDetailRepository;
 import com.example.school_library_system.repository.BorrowRecordRepository;
 import com.example.school_library_system.repository.UserRepository;
 import com.example.school_library_system.repository.WaitlistRecordRepository;
@@ -16,9 +17,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class BorrowService {
@@ -39,6 +42,9 @@ public class BorrowService {
     private WaitlistRecordRepository waitlistRecordRepository;
 
     @Autowired
+    private BorrowDetailRepository borrowDetailRepository;
+
+    @Autowired
     private EmailService emailService;
 
     public List<BorrowRecord> getAllBorrowRecords() {
@@ -56,14 +62,20 @@ public class BorrowService {
     @Transactional
     public BorrowRecord createDirectBorrowRecord(DirectBorrowDto dto) throws Exception {
         // 1. Tìm người dùng (User)
-        User user = userRepository.findById(dto.getReaderId())
-                .orElseThrow(() -> new Exception("Không tìm thấy Mã Người Dùng #" + dto.getReaderId()));
+        Integer readerId = Objects.requireNonNull(dto.getReaderId(), "readerId must not be null");
+        User user = userRepository.findById(readerId)
+                .orElseThrow(() -> new Exception("Không tìm thấy Mã Người Dùng #" + readerId));
 
         // 2. Chuẩn bị Phiếu mượn
         BorrowRecord record = new BorrowRecord();
         record.setUser(user);
         record.setBorrowDate(LocalDateTime.now());
-        record.setDueDate(LocalDateTime.now().plusDays(dto.getBorrowDays()));
+        if (dto.getBorrowMinutes() != null && dto.getBorrowMinutes() > 0) {
+            record.setDueDate(LocalDateTime.now().plusMinutes(dto.getBorrowMinutes()));
+        } else {
+            int days = (dto.getBorrowDays() != null && dto.getBorrowDays() > 0) ? dto.getBorrowDays() : 7;
+            record.setDueDate(LocalDateTime.now().plusDays(days));
+        }
         record.setRecordStatus("Đang mượn");
         List<BorrowDetail> details = new ArrayList<>();
 
@@ -104,7 +116,8 @@ public class BorrowService {
     }
 
     @Transactional
-    public void confirmBorrowRequest(Integer borrowId, Integer borrowDays) throws Exception {
+    public void confirmBorrowRequest(Integer borrowId, Integer borrowDays, Integer borrowMinutes) throws Exception {
+        Objects.requireNonNull(borrowId, "borrowId must not be null");
         BorrowRecord record = borrowRecordRepository.findById(borrowId)
                 .orElseThrow(() -> new Exception("Đơn #" + borrowId + " không tồn tại."));
 
@@ -112,18 +125,23 @@ public class BorrowService {
             throw new Exception("Đơn này không ở trạng thái Chờ duyệt.");
         }
 
-        int days = (borrowDays != null && borrowDays > 0) ? borrowDays : 7;
-
-        // Set thời gian thực tế khi giao sách
         record.setRecordStatus("Đang mượn");
         record.setBorrowDate(LocalDateTime.now());
-        record.setDueDate(LocalDateTime.now().plusDays(days));
-        
+
+        // Nếu nhập số phút (test mode) → dùng phút; ngược lại dùng ngày
+        if (borrowMinutes != null && borrowMinutes > 0) {
+            record.setDueDate(LocalDateTime.now().plusMinutes(borrowMinutes));
+        } else {
+            int days = (borrowDays != null && borrowDays > 0) ? borrowDays : 7;
+            record.setDueDate(LocalDateTime.now().plusDays(days));
+        }
+
         borrowRecordRepository.save(record);
     }
 
     @Transactional
     public void sendManualReminder(Integer borrowId) throws Exception {
+        Objects.requireNonNull(borrowId, "borrowId must not be null");
         BorrowRecord record = borrowRecordRepository.findById(borrowId)
                 .orElseThrow(() -> new Exception("Không tìm thấy Phiếu #" + borrowId));
 
@@ -152,6 +170,8 @@ public class BorrowService {
     
     @Transactional
     public WaitlistRecord registerWaitlist(Integer userId, Integer bookId) throws Exception {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(bookId, "bookId must not be null");
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new Exception("Không tìm thấy tài khoản người dùng!"));
 
@@ -173,7 +193,7 @@ public class BorrowService {
             throw new Exception("Sách hiện đang có sẵn trên kệ, bạn có thể trở về trang chi tiết và mượn ngay.");
         }
 
-        Book book = bookRepository.findById(bookId)
+        Book book = bookRepository.findById(Objects.requireNonNull(bookId))
                 .orElseThrow(() -> new Exception("Không tìm thấy đầu sách!"));
 
         WaitlistRecord wl = new WaitlistRecord();
@@ -231,10 +251,13 @@ public class BorrowService {
     }
 
     /**
-     * Hàm trả sách dùng cho backend admin call (hoặc cron job giả lập)
+     * Hàm trả sách dùng cho backend admin call.
+     * damagePercentage: 0=không hỏng, 20/50/70=hỏng nhẹ (vẫn mượn được), 100/200=hỏng nặng/mất (→Bảo trì).
      */
     @Transactional
-    public void returnBook(Integer borrowId) throws Exception {
+    public void returnBook(Integer borrowId, boolean lateReturn, boolean damagedBook,
+                           String violationNote, BigDecimal lateFine, int damagePercentage) throws Exception {
+        Objects.requireNonNull(borrowId, "borrowId must not be null");
         BorrowRecord record = borrowRecordRepository.findById(borrowId)
                 .orElseThrow(() -> new Exception("Không tìm thấy đơn ID #" + borrowId));
 
@@ -245,19 +268,70 @@ public class BorrowService {
         record.setRecordStatus("Đã trả");
         borrowRecordRepository.save(record);
 
-        // Đưa sách về kệ
+        // Xây dựng trạng thái chi tiết trả sách
+        String physicalState;
+        if (damagedBook) {
+            physicalState = (damagePercentage >= 100) ? "Hư hỏng nặng" : "Hư hỏng nhẹ";
+        } else if (lateReturn) {
+            physicalState = "Trả muộn";
+        } else {
+            physicalState = "Nguyên vẹn";
+        }
+
+        // Xây dựng ghi chú vi phạm tổng hợp
+        StringBuilder noteBuilder = new StringBuilder();
+        if (lateReturn) noteBuilder.append("Trả muộn hạn. ");
+        if (damagedBook) {
+            if (damagePercentage >= 100) {
+                noteBuilder.append("Sách bị hư hỏng nặng / mất (" + damagePercentage + "%). ");
+            } else {
+                noteBuilder.append("Sách bị hư hỏng nhẹ (" + damagePercentage + "%). ");
+            }
+        }
+        if (violationNote != null && !violationNote.trim().isEmpty()) {
+            noteBuilder.append("Ghi chú: ").append(violationNote.trim());
+        }
+        String finalNote = noteBuilder.toString().trim();
+
+        // Đưa sách về kệ + ghi nhận trạng thái trả
         if (record.getDetails() != null) {
             for (BorrowDetail detail : record.getDetails()) {
+                // Ghi nhận ngày trả và tình trạng
+                detail.setReturnDate(LocalDateTime.now());
+                detail.setReturnPhysicalState(physicalState);
+                if (!finalNote.isEmpty()) {
+                    detail.setViolationNote(finalNote);
+                }
+                // Lưu tiền phạt (phạt trễ + phạt hỏng đã cộng từ controller)
+                if ((lateReturn || damagedBook) && lateFine != null && lateFine.compareTo(BigDecimal.ZERO) > 0) {
+                    detail.setAssessedFine(lateFine);
+                }
+
                 if (detail.getBookCopy() != null) {
                     BookCopy copy = detail.getBookCopy();
-                    copy.setPhysicalStatus("Sẵn sàng");
+                    if (damagedBook && damagePercentage >= 100) {
+                        // Hỏng nặng hoặc mất sách → Bảo trì, KHÔNG thể mượn nữa
+                        copy.setPhysicalStatus("Bảo trì");
+                    } else {
+                        // Hỏng nhẹ (20/50/70%) hoặc nguyên vẹn → vẫn Sẵn sàng cho mượn
+                        copy.setPhysicalStatus("Sẵn sàng");
+                    }
                     bookCopyRepository.save(copy);
-                    
-                    // Call AUTO-ASSIGN (Kiểm tra hàng chờ)
-                    processWaitlistForBook(copy.getBook(), copy);
+
+                    // AUTO-ASSIGN hàng chờ — chỉ khi sách thực sự sẵn sàng
+                    if ("Sẵn sàng".equals(copy.getPhysicalStatus())) {
+                        processWaitlistForBook(copy.getBook(), copy);
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Lấy tất cả BorrowDetail có vi phạm
+     */
+    public List<BorrowDetail> getAllViolations() {
+        return borrowDetailRepository.findAllWithViolations();
     }
 
     // ========== USER SELF-SERVICE BORROW ==========
@@ -265,12 +339,21 @@ public class BorrowService {
     private static final int MAX_ACTIVE_BORROWS = 5;
 
     /**
-     * Mượn sách từ phía người dùng (self-service)
+     * Mượn sách từ phía người dùng (self-service).
+     *
+     * Logic gộp phiếu: nếu user đã có phiếu "Đã đặt chỗ" chưa được admin xác nhận
+     * (borrowDate == null), sách mới sẽ được THÊM VÀO phiếu đó thay vì tạo phiếu mới.
+     * Điều này giúp admin chỉ thấy 1 hàng cho user trên màn hình quản lý.
      */
     @Transactional
     public BorrowRecord borrowBookForReader(Integer userId, Integer bookId) throws Exception {
+        // 0. Chặn nếu user còn vi phạm chưa nộp phạt
+        if (borrowDetailRepository.hasUnpaidViolation(userId)) {
+            throw new Exception("Tài khoản của bạn đang có khoản phạt chưa thanh toán. Vui lòng đến quầy thủ thư để nộp phạt trước khi mượn sách.");
+        }
+
         // 1. Kiểm tra giới hạn tối đa 5 cuốn
-        long activeBorrows = borrowRecordRepository.countActiveByReaderId(userId);
+        long activeBorrows = borrowRecordRepository.countActiveBooksByReaderId(userId);
         if (activeBorrows >= MAX_ACTIVE_BORROWS) {
             throw new Exception("Bạn đã mượn tối đa " + MAX_ACTIVE_BORROWS + " cuốn sách. Vui lòng trả sách trước khi mượn thêm.");
         }
@@ -288,39 +371,80 @@ public class BorrowService {
                 .findFirst()
                 .orElseThrow(() -> new Exception("Cuốn sách này hiện không còn bản nào sẵn sàng!"));
 
-        // 4. Đổi trạng thái cuốn sách
+        // 4. Đổi trạng thái bản sao → Đang mượn (giữ chỗ)
         availableCopy.setPhysicalStatus("Đang mượn");
         bookCopyRepository.save(availableCopy);
 
-        // 5. Tạo phiếu mượn — chỉ đặt chỗ, chưa set thời gian
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new Exception("Không tìm thấy tài khoản!"));
+        // 5. Tạo BorrowDetail mới cho cuốn này
+        BorrowDetail newDetail = new BorrowDetail();
+        newDetail.setBookCopy(availableCopy);
 
-        BorrowRecord record = new BorrowRecord();
-        record.setUser(user);
-        // borrowDate và dueDate để null cho đến khi admin xác nhận giao sách
-        record.setRecordStatus("Đã đặt chỗ");
+        // 6. Kiểm tra xem user đã có phiếu "Đã đặt chỗ" chưa xác nhận chưa?
+        List<BorrowRecord> pendingRecords = borrowRecordRepository.findPendingByUserId(userId);
 
-        BorrowDetail detail = new BorrowDetail();
-        detail.setBookCopy(availableCopy);
-        detail.setBorrowRecord(record);
-        record.getDetails().add(detail);
+        if (!pendingRecords.isEmpty()) {
+            // ── Có phiếu cũ → GỘP vào phiếu đó ──
+            BorrowRecord existingRecord = pendingRecords.get(0);
+            
+            // Cấp độ bảo vệ 2: Chặn triệt để việc có 2 quyển của cùng một đầu sách (bookId)
+            // nằm trong cùng một phiếu chờ, quét ngay trên bộ nhớ để bỏ qua giới hạn delay DB
+            boolean isAlreadyInPending = existingRecord.getDetails().stream()
+                    .anyMatch(d -> d.getBookCopy().getBook().getBookId().equals(bookId));
+            if (isAlreadyInPending) {
+                // Hoàn trả sách khả dụng về kệ do đã có lỗi phi logic
+                availableCopy.setPhysicalStatus("Sẵn sàng");
+                bookCopyRepository.save(availableCopy);
+                throw new Exception("Hệ thống phát hiện quyển sách này đã lọt vào phiếu đặt chỗ của bạn rồi!");
+            }
+            
+            newDetail.setBorrowRecord(existingRecord);
+            existingRecord.getDetails().add(newDetail);
+            return borrowRecordRepository.save(existingRecord);
 
-        return borrowRecordRepository.save(record);
+        } else {
+            // ── Chưa có phiếu nào → tạo phiếu mới ──
+            User user = userRepository.findById(Objects.requireNonNull(userId, "userId must not be null"))
+                    .orElseThrow(() -> new Exception("Không tìm thấy tài khoản!"));
+
+            BorrowRecord newRecord = new BorrowRecord();
+            newRecord.setUser(user);
+            // borrowDate và dueDate để null cho đến khi admin xác nhận giao sách
+            newRecord.setRecordStatus("Đã đặt chỗ");
+            newDetail.setBorrowRecord(newRecord);
+            newRecord.getDetails().add(newDetail);
+
+            return borrowRecordRepository.save(newRecord);
+        }
     }
 
     /**
-     * Kiểm tra user đã mượn 1 đầu sách hay chưa
+     * Kiểm tra user đã mượn 1 đầu sách hay chưa (cả Đã đặt chỗ lẫn Đang mượn)
      */
     public boolean hasReaderBorrowedBook(Integer userId, Integer bookId) {
         return borrowRecordRepository.countActiveByReaderIdAndBookId(userId, bookId) > 0;
     }
 
     /**
-     * Đếm số lượt mượn đang hoạt động
+     * Lấy trạng thái cụ thể của user với 1 cuốn sách (null nếu chưa mượn)
+     * Trả về: "Đã đặt chỗ", "Đang mượn", hoặc null
+     */
+    public String getActiveStatusForBook(Integer userId, Integer bookId) {
+        List<String> statuses = borrowRecordRepository.findActiveStatusByReaderIdAndBookId(userId, bookId);
+        return statuses.isEmpty() ? null : statuses.get(0);
+    }
+
+    /**
+     * Đếm tổng số cuốn sách đang mượn hoạt động (Đang mượn / Đã đặt chỗ)
      */
     public long countActiveBorrows(Integer userId) {
-        return borrowRecordRepository.countActiveByReaderId(userId);
+        return borrowRecordRepository.countActiveBooksByReaderId(userId);
+    }
+
+    /**
+     * Lấy danh sách bookId mà user đang mượn/đặt chỗ (để lock nút trên trang home)
+     */
+    public List<Integer> getActiveBorrowedBookIds(Integer userId) {
+        return borrowRecordRepository.findActiveBorrowedBookIdsByUserId(userId);
     }
 
     /**
@@ -328,5 +452,24 @@ public class BorrowService {
      */
     public List<BorrowRecord> getReaderBorrows(Integer userId) {
         return borrowRecordRepository.findByUserUserIdOrderByBorrowIdDesc(userId);
+    }
+
+    /**
+     * Kiểm tra user hiện có vi phạm chưa nộp phạt không
+     */
+    public boolean hasUnpaidViolation(Integer userId) {
+        return borrowDetailRepository.hasUnpaidViolation(userId);
+    }
+
+    /**
+     * Admin xác nhận độc giả đã nộp phạt — đánh dấu finePaid = true
+     */
+    @Transactional
+    public void settleViolationFine(Integer detailId) throws Exception {
+        Objects.requireNonNull(detailId, "detailId must not be null");
+        BorrowDetail detail = borrowDetailRepository.findById(detailId)
+                .orElseThrow(() -> new Exception("Không tìm thấy chi tiết phiếu #" + detailId));
+        detail.setFinePaid(true);
+        borrowDetailRepository.save(detail);
     }
 }

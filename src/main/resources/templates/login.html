@@ -44,6 +44,37 @@
             <span th:text="${successMessage}"></span>
         </div>
 
+        <!-- Quick Fill: Tài khoản thử nhanh -->
+        <div class="quick-fill-section" th:if="${demoAccounts != null and !demoAccounts.isEmpty()}">
+            <div class="quick-fill-label">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Đăng nhập nhanh</span>
+            </div>
+            <div class="quick-fill-list">
+                <button
+                    th:each="acc : ${demoAccounts}"
+                    type="button"
+                    class="quick-fill-btn"
+                    th:classappend="${acc.role == 'ROLE_ADMIN'} ? ' is-admin' : ' is-reader'"
+                    th:attr="data-email=${acc.email}, data-password='123456'"
+                    th:title="${'Click để điền: ' + acc.email}"
+                >
+                    <div class="quick-fill-avatar" th:classappend="${acc.role == 'ROLE_ADMIN'} ? ' admin-avatar' : ' reader-avatar'">
+                        <i th:class="${acc.role == 'ROLE_ADMIN'} ? 'fa-solid fa-user-shield' : 'fa-solid fa-user-graduate'"></i>
+                    </div>
+                    <div class="quick-fill-info">
+                        <span class="quick-fill-name" th:text="${acc.fullName}">Tên người dùng</span>
+                        <span class="quick-fill-role" th:text="${acc.role == 'ROLE_ADMIN'} ? 'Quản trị viên' : 'Độc giả'">Vai trò</span>
+                    </div>
+                    <i class="fa-solid fa-arrow-right quick-fill-arrow"></i>
+                </button>
+            </div>
+            <p class="quick-fill-hint">
+                <i class="fa-solid fa-circle-info"></i>
+                Mật khẩu mặc định: <code>123456</code> — bạn có thể thay đổi sau khi đăng nhập.
+            </p>
+        </div>
+
         <!-- Form đăng nhập - Spring Security xử lý POST /login -->
         <form id="login-form" method="post" th:action="@{/login}" novalidate>
             <div th:if="${_csrf}" th:field="*{_csrf}" style="display:none"></div>
@@ -110,6 +141,32 @@
         const isHidden = passwordInput.type === 'password';
         passwordInput.type = isHidden ? 'text' : 'password';
         toggleIcon.className = isHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    });
+
+    // Quick-fill: click to autofill email & password
+    document.querySelectorAll('.quick-fill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const email = btn.getAttribute('data-email');
+            const password = btn.getAttribute('data-password');
+
+            const emailInput = document.getElementById('email');
+            const passInput = document.getElementById('password');
+
+            // Flash animation before filling
+            emailInput.classList.add('fill-flash');
+            passInput.classList.add('fill-flash');
+
+            setTimeout(() => {
+                emailInput.value = email;
+                passInput.value = password;
+                emailInput.classList.remove('fill-flash');
+                passInput.classList.remove('fill-flash');
+            }, 150);
+
+            // Highlight active card
+            document.querySelectorAll('.quick-fill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
     });
 </script>
 </body>

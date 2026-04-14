@@ -521,6 +521,208 @@ body {
 }
 
 /* ====================================================
+   QUICK-FILL DEMO ACCOUNTS
+   ==================================================== */
+.quick-fill-section {
+    margin-bottom: 28px;
+}
+
+.quick-fill-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.quick-fill-label i {
+    color: #F59E0B;
+    font-size: 10px;
+}
+
+.quick-fill-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.quick-fill-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-fill-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.quick-fill-btn.is-admin::before {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.06), transparent);
+}
+
+.quick-fill-btn.is-reader::before {
+    background: linear-gradient(90deg, rgba(79, 110, 247, 0.06), transparent);
+}
+
+.quick-fill-btn:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateX(3px);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.quick-fill-btn:hover::before {
+    opacity: 1;
+}
+
+.quick-fill-btn.is-admin:hover {
+    border-color: rgba(245, 158, 11, 0.35);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+}
+
+.quick-fill-btn.is-reader:hover {
+    border-color: rgba(79, 110, 247, 0.35);
+    box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.08);
+}
+
+.quick-fill-btn.active {
+    border-color: rgba(79, 110, 247, 0.5);
+    background: rgba(79, 110, 247, 0.08);
+}
+
+.quick-fill-btn.is-admin.active {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+/* Avatar icon */
+.quick-fill-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: var(--transition);
+}
+
+.quick-fill-avatar.admin-avatar {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.quick-fill-avatar.reader-avatar {
+    background: rgba(79, 110, 247, 0.15);
+    color: var(--primary-light);
+    border: 1px solid rgba(79, 110, 247, 0.25);
+}
+
+.quick-fill-btn:hover .quick-fill-avatar.admin-avatar {
+    background: rgba(245, 158, 11, 0.25);
+}
+
+.quick-fill-btn:hover .quick-fill-avatar.reader-avatar {
+    background: rgba(79, 110, 247, 0.25);
+}
+
+/* Text info */
+.quick-fill-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.quick-fill-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quick-fill-role {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Arrow icon */
+.quick-fill-arrow {
+    color: var(--text-muted);
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: var(--transition);
+    opacity: 0;
+}
+
+.quick-fill-btn:hover .quick-fill-arrow {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
+/* Hint text */
+.quick-fill-hint {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.5;
+}
+
+.quick-fill-hint i {
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.quick-fill-hint code {
+    font-family: 'Courier New', monospace;
+    background: rgba(79, 110, 247, 0.12);
+    color: var(--primary-light);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid rgba(79, 110, 247, 0.2);
+}
+
+/* Input flash animation when quick-fill is applied */
+@keyframes fillFlash {
+    0%   { background: rgba(79, 110, 247, 0.25); box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.2); }
+    100% { background: var(--bg-input-focus); box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15); }
+}
+
+.form-control.fill-flash {
+    animation: fillFlash 0.3s ease forwards;
+    border-color: var(--primary);
+}
+
+/* ====================================================
    RESPONSIVE
    ==================================================== */
 @media (max-width: 480px) {

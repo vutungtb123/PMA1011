@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Tạo Thẻ Thư Viện</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+        .form-card {
+            background: #fff; border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 2rem;
+        }
+        .form-section-title {
+            font-size: .8rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .8px; color: #6366f1; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .form-section-title::after {
+            content: ''; flex: 1; height: 1px; background: #e0e7ff;
+        }
+        .form-label { font-weight: 600; font-size: .88rem; color: #374151; }
+        .form-control, .form-select {
+            border-radius: 10px; border: 1.5px solid #e2e8f0;
+            font-size: .9rem; padding: .6rem .9rem;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+        }
+        .photo-upload-box {
+            border: 2px dashed #c4b5fd; border-radius: 14px;
+            padding: 1.5rem; text-align: center; cursor: pointer;
+            transition: all .2s; background: #faf5ff;
+        }
+        .photo-upload-box:hover { border-color: #6366f1; background: #f0ebff; }
+        .photo-preview {
+            width: 120px; height: 120px; border-radius: 50%;
+            object-fit: cover; border: 3px solid #c4b5fd;
+            display: none; margin: 0 auto .8rem;
+        }
+        .card-preview {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            border-radius: 18px; padding: 1.5rem; color: #fff;
+            min-height: 200px; position: relative; overflow: hidden;
+            box-shadow: 0 8px 32px rgba(37,99,235,.35);
+        }
+        .card-preview::before {
+            content: ''; position: absolute; width: 200px; height: 200px;
+            background: rgba(255,255,255,.06); border-radius: 50%;
+            top: -60px; right: -40px;
+        }
+        .card-preview .lib-name { font-size: .7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; opacity: .7; }
+        .card-preview .student-name { font-size: 1.3rem; font-weight: 800; margin: .5rem 0 .2rem; }
+        .card-preview .student-id { font-family: monospace; font-size: .88rem; opacity: .8; }
+        .card-preview .card-footer-row { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 1rem; }
+        .card-preview .role-badge {
+            font-size: .65rem; background: rgba(255,255,255,.2); border-radius: 8px;
+            padding: 3px 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+        }
+        .page-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            border-radius: 16px; padding: 1.5rem 2rem; color: #fff; margin-bottom: 1.5rem;
+        }
+        .page-header h1 { font-size: 1.4rem; font-weight: 800; margin: 0; }
+        .btn-create { background: linear-gradient(135deg,#2563eb,#6366f1); color:#fff; border:none; border-radius:12px; font-weight:700; padding:.75rem 2rem; font-size:1rem; }
+        .btn-create:hover { background: linear-gradient(135deg,#1d4ed8,#4f46e5); color:#fff; transform:translateY(-1px); }
+        .preview-avatar { width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.5); display:none; }
+        .preview-avatar-placeholder { width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:800; }
+    </style>
+</head>
+<body>
+<div class="page-layout">
+<aside class="admin-sidebar">
+    <a class="sidebar-brand" href="/admin/book">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">Thư Viện</span><span class="brand-sub">Admin Panel</span></div>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="/admin/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/book" data-abbr="S" class="sidebar-link"><span>Sách</span></a>
+        <a href="/admin/category" data-abbr="DM" class="sidebar-link"><span>Danh Mục</span></a>
+        <a href="/admin/warehouse" data-abbr="K" class="sidebar-link"><span>Kho</span></a>
+        <a href="/admin/borrow" data-abbr="MT" class="sidebar-link"><span>Mượn/Trả</span></a>
+        <a href="/admin/borrow/history" data-abbr="LS" class="sidebar-link"><span>Lịch Sử Phiếu</span></a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/borrow/violations" data-abbr="VP" class="sidebar-link warn"><span>Vi Phạm</span></a>
+        <a href="/admin/users" data-abbr="TV" class="sidebar-link active"><span>Thẻ Thư Viện</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout"><i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span></button>
+        </form>
+    </div>
+</aside>
+<div class="admin-main">
+<div class="container-fluid py-4 px-4">
+
+            <!-- Header -->
+            <div class="page-header">
+                <h1><i class="fas fa-id-card-alt me-2"></i>Tạo Thẻ Thư Viện Mới</h1>
+                <div class="mt-1 opacity-75" style="font-size:.85rem;">Tạo tài khoản để học sinh có thể đăng nhập và mượn sách</div>
+            </div>
+
+            <!-- Error -->
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="row g-4">
+                <!-- FORM -->
+                <div class="col-lg-7">
+                    <div class="form-card">
+                        <form id="createForm" method="post" action="/admin/users/create" enctype="multipart/form-data">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                            <!-- Thông tin cơ bản -->
+                            <div class="form-section-title"><i class="fas fa-user"></i>Thông tin học sinh</div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Họ và Tên <span class="text-danger">*</span></label>
+                                <input type="text" name="fullName" id="fullName" class="form-control"
+                                       placeholder="VD: Nguyễn Văn An" required
+                                       th:value="${prevFullName}"
+                                       oninput="updatePreview()">
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Email (Tên đăng nhập) <span class="text-danger">*</span></label>
+                                    <input type="email" name="email" id="email" class="form-control"
+                                           placeholder="VD: an.nguyen@school.edu.vn" required
+                                           th:value="${prevEmail}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Mã Học Sinh / Thẻ <span class="text-danger">*</span></label>
+                                    <input type="text" name="studentId" id="studentId" class="form-control"
+                                           placeholder="VD: HS0001" required
+                                           th:value="${prevStudentId != null} ? ${prevStudentId} : ${suggestedStudentId}"
+                                           oninput="updatePreview(); checkStudentId(this.value)">
+                                    <div id="studentIdFeedback" class="mt-1" style="font-size:.8rem;"></div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Nhóm Độc Giả</label>
+                                <select name="groupId" class="form-select">
+                                    <option value="">— Không thuộc nhóm —</option>
+                                    <option th:each="g : ${groups}" th:value="${g.groupId}" th:text="${g.groupName + ' (mượn tối đa ' + g.maxBorrowLimit + ' cuốn, ' + g.maxBorrowDays + ' ngày)'}"></option>
+                                </select>
+                            </div>
+
+                            <!-- Ảnh -->
+                            <div class="form-section-title"><i class="fas fa-camera"></i>Ảnh thẻ học sinh</div>
+
+                            <div class="mb-4">
+                                <label for="photoFile" style="width:100%;">
+                                    <div class="photo-upload-box" id="photoUploadBox">
+                                        <img id="photoPreview" src="" class="photo-preview" alt="Preview">
+                                        <div id="uploadPlaceholder">
+                                            <i class="fas fa-cloud-upload-alt fa-2x mb-2" style="color:#a78bfa;"></i>
+                                            <div class="fw-600" style="color:#6366f1;">Click để chọn ảnh</div>
+                                            <div class="text-muted" style="font-size:.8rem;">JPG, PNG — tối đa 5MB</div>
+                                        </div>
+                                    </div>
+                                </label>
+                                <input type="file" id="photoFile" name="photoFile" accept="image/*"
+                                       class="d-none" onchange="previewPhoto(this)">
+                            </div>
+
+                            <!-- Info mật khẩu -->
+                            <div class="mb-4 p-3 rounded-3" style="background:#f0fdf4;border:1.5px solid #86efac;">
+                                <div style="font-size:.85rem;color:#166534;">
+                                    <i class="fas fa-lock me-2"></i>
+                                    <strong>Mật khẩu mặc định:</strong> <code>123456</code> — học sinh có thể đổi sau khi đăng nhập.
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-create w-100">
+                                <i class="fas fa-plus-circle me-2"></i>Tạo Thẻ Thư Viện
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- CARD PREVIEW -->
+                <div class="col-lg-5">
+                    <div class="sticky-top" style="top:1.5rem;">
+                        <div class="mb-3" style="font-size:.85rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.8px;">
+                            <i class="fas fa-eye me-1"></i>Xem trước thẻ
+                        </div>
+                        <div class="card-preview">
+                            <div class="lib-name">Thư Viện Trường — Library Card</div>
+                            <div class="d-flex align-items-center gap-3 mt-3">
+                                <img id="prevAvatarImg" class="preview-avatar" src="" alt="">
+                                <div id="prevAvatarPlaceholder" class="preview-avatar-placeholder">?</div>
+                                <div>
+                                    <div class="student-name" id="prevName">Họ và Tên Học Sinh</div>
+                                    <div class="student-id" id="prevStudentIdDisplay">Mã: HS0001</div>
+                                </div>
+                            </div>
+                            <div class="card-footer-row">
+                                <div>
+                                    <div style="font-size:.7rem;opacity:.6;">Hiệu lực đến</div>
+                                    <div style="font-size:.85rem;font-weight:700;" id="prevValidUntil">—</div>
+                                    <div class="role-badge mt-2">Độc Giả</div>
+                                </div>
+                                <canvas id="prevQrCanvas" width="70" height="70" style="border-radius:8px;"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 p-3 rounded-3" style="background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.07);font-size:.82rem;">
+                            <div class="fw-bold mb-2" style="color:#374151;"><i class="fas fa-info-circle me-1 text-primary"></i>Thông tin đăng nhập</div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Tên đăng nhập:</span>
+                                <span id="prevEmail2" class="fw-semibold text-truncate ms-2" style="max-width:180px;">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Mật khẩu mặc định:</span>
+                                <code class="fw-bold" style="color:#6366f1;">123456</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // === Xem trước ảnh ===
+    function previewPhoto(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgEl = document.getElementById('photoPreview');
+                imgEl.src = e.target.result;
+                imgEl.style.display = 'block';
+                document.getElementById('uploadPlaceholder').style.display = 'none';
+                // Cập nhật avatar preview trên thẻ
+                const prevImg = document.getElementById('prevAvatarImg');
+                prevImg.src = e.target.result;
+                prevImg.style.display = 'block';
+                document.getElementById('prevAvatarPlaceholder').style.display = 'none';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // === Cập nhật xem trước thẻ ===
+    let _qrTimeout = null;
+    function updatePreview() {
+        const name = document.getElementById('fullName').value || 'Họ và Tên Học Sinh';
+        const sid  = document.getElementById('studentId').value || 'HS0001';
+        const email = document.getElementById('email') ? document.getElementById('email').value : '';
+
+        document.getElementById('prevName').textContent = name;
+        document.getElementById('prevStudentIdDisplay').textContent = 'Mã: ' + sid;
+        document.getElementById('prevEmail2').textContent = email || '—';
+
+        if (!document.getElementById('prevAvatarImg').style.display || document.getElementById('prevAvatarImg').style.display === 'none') {
+            const initial = name.trim().charAt(0).toUpperCase() || '?';
+            document.getElementById('prevAvatarPlaceholder').textContent = initial;
+        }
+
+        // Render QR preview (debounce)
+        clearTimeout(_qrTimeout);
+        _qrTimeout = setTimeout(function() {
+            const qrData = 'LIB-USR-NEW-' + sid;
+            if (typeof QRCode !== 'undefined') {
+                QRCode.toCanvas(document.getElementById('prevQrCanvas'), qrData,
+                    { width: 70, margin: 1, color: { dark: '#ffffff', light: '#2563eb' } })
+                    .catch(function(){});
+            }
+        }, 250);
+    }
+
+    // Tính ngày hiệu lực (1 năm từ hôm nay)
+    const expiry = new Date();
+    expiry.setFullYear(expiry.getFullYear() + 1);
+    document.getElementById('prevValidUntil').textContent = expiry.toLocaleDateString('vi-VN');
+
+    // Init preview on load
+    updatePreview();
+    document.getElementById('email').addEventListener('input', updatePreview);
+
+    // === Kiểm tra mã học sinh trùng real-time ===
+    let _sidTimeout = null;
+    function checkStudentId(val) {
+        const feedback = document.getElementById('studentIdFeedback');
+        const submitBtn = document.querySelector('button[type="submit"]');
+        val = val.trim();
+        if (!val) { feedback.innerHTML = ''; submitBtn.disabled = false; return; }
+
+        clearTimeout(_sidTimeout);
+        feedback.innerHTML = '<span class="text-secondary"><i class="fas fa-spinner fa-spin me-1"></i>Đang kiểm tra...</span>';
+
+        _sidTimeout = setTimeout(function() {
+            fetch('/admin/users/check-student-id?studentId=' + encodeURIComponent(val))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.exists) {
+                        feedback.innerHTML = '<span class="text-danger fw-semibold"><i class="fas fa-times-circle me-1"></i>Mã này đã tồn tại! Vui lòng chọn mã khác.</span>';
+                        document.getElementById('studentId').classList.add('is-invalid');
+                        submitBtn.disabled = true;
+                    } else {
+                        feedback.innerHTML = '<span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Mã hợp lệ, có thể sử dụng.</span>';
+                        document.getElementById('studentId').classList.remove('is-invalid');
+                        document.getElementById('studentId').classList.add('is-valid');
+                        submitBtn.disabled = false;
+                    }
+                })
+                .catch(() => { feedback.innerHTML = ''; submitBtn.disabled = false; });
+        }, 400);
+    }
+</script>
+</body>
+</html>

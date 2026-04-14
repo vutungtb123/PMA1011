@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class BookService {
@@ -28,6 +29,7 @@ public class BookService {
     }
 
     public Book getBookById(Integer id) {
+        if (id == null) return null;
         return bookRepository.findById(id).orElse(null);
     }
 
@@ -35,8 +37,9 @@ public class BookService {
     public Book saveBook(Book book, MultipartFile coverImageFile) {
         if (coverImageFile != null && !coverImageFile.isEmpty()) {
             // Nếu đang edit (book đã có ID) và có ảnh bìa cũ → xóa ảnh cũ trước
-            if (book.getBookId() != null) {
-                Book existing = bookRepository.findById(book.getBookId()).orElse(null);
+            Integer bookId = book.getBookId();
+            if (bookId != null) {
+                Book existing = bookRepository.findById(bookId).orElse(null);
                 if (existing != null && existing.getCoverImage() != null) {
                     fileStorageService.deleteFile(existing.getCoverImage());
                 }
@@ -44,11 +47,12 @@ public class BookService {
             String imageUrl = fileStorageService.storeFile(coverImageFile, "books");
             book.setCoverImage(imageUrl);
         }
-        return bookRepository.save(book);
+        return bookRepository.save(Objects.requireNonNull(book, "Book must not be null"));
     }
 
     @Transactional
     public void deleteBook(Integer id) {
+        if (id == null) return;
         Book book = bookRepository.findById(id).orElse(null);
         if (book == null) return;
 
@@ -66,7 +70,7 @@ public class BookService {
         }
 
         // 3. Xóa bản ghi DB (cascade sẽ xóa pages + copies)
-        bookRepository.deleteById(id);
+        bookRepository.deleteById(Objects.requireNonNull(id));
     }
 
     // -- Sample Pages --
@@ -112,12 +116,13 @@ public class BookService {
 
     @Transactional
     public void deleteSamplePage(Integer pageId) {
+        if (pageId == null) return;
         samplePageRepository.findById(pageId).ifPresent(page -> {
             // Nếu trang là ảnh → xóa file ảnh khỏi đĩa trước
             if (Boolean.TRUE.equals(page.getIsImage()) && page.getContent() != null) {
                 fileStorageService.deleteFile(page.getContent());
             }
-            samplePageRepository.deleteById(pageId);
+            samplePageRepository.deleteById(Objects.requireNonNull(pageId));
         });
     }
 }

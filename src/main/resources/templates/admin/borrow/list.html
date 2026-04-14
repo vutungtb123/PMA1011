@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
     <style>
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
 
@@ -69,8 +70,122 @@
         }
         .btn-return-book:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,165,233,0.35); }
 
+        /* RETURN INSPECTION MODAL */
+        .inspect-header {
+            background: linear-gradient(135deg, #0369a1, #0ea5e9); color: #fff; border: none;
+            padding: 1.2rem 1.5rem;
+        }
+        .inspect-header h5 { font-weight: 800; margin: 0; font-size: 1.1rem; }
+        .inspect-info { background: #f8fafc; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1.2rem; border: 1px solid #e2e8f0; }
+        .inspect-info .info-label { font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .inspect-info .info-value { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
+        .inspect-book-list { list-style: none; padding: 0; margin: 0 0 0.8rem; }
+        .inspect-book-list li { padding: 6px 0; font-size: 0.85rem; color: #334155; display: flex; align-items: center; gap: 8px; }
+        .inspect-book-list li i { color: #6366f1; font-size: 0.8rem; }
+        .inspect-divider { height: 1px; background: #e2e8f0; margin: 1rem 0; }
+
+        /* INSPECTION OPTIONS */
+        .inspect-options { display: flex; flex-direction: column; gap: 10px; }
+        .inspect-option {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: 14px; border: 2px solid #e2e8f0;
+            cursor: pointer; transition: all 0.25s; position: relative;
+        }
+        .inspect-option:hover { border-color: #cbd5e1; background: #f8fafc; }
+        .inspect-option.selected { border-color: var(--opt-color, #6366f1); background: var(--opt-bg, #ede9fe); }
+        .inspect-option.disabled { opacity: 0.35; cursor: not-allowed; }
+        .inspect-option.disabled:hover { border-color: #e2e8f0; background: transparent; }
+        .inspect-option.disabled.selected { border-color: var(--opt-color, #6366f1); background: var(--opt-bg, #ede9fe); }
+        .inspect-option.locked { opacity: 0.25; cursor: not-allowed; }
+        .inspect-option.locked:hover { border-color: #e2e8f0; background: transparent; }
+        .opt-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+        .opt-intact .opt-icon  { background: #dcfce7; color: #16a34a; }
+        .opt-late .opt-icon    { background: #fef3c7; color: #d97706; }
+        .opt-damaged .opt-icon { background: #fee2e2; color: #dc2626; }
+        .opt-intact  { --opt-color: #16a34a; --opt-bg: #f0fdf4; }
+        .opt-late    { --opt-color: #d97706; --opt-bg: #fffbeb; }
+        .opt-damaged { --opt-color: #dc2626; --opt-bg: #fef2f2; }
+        .opt-text .opt-title { font-weight: 700; font-size: 0.88rem; color: #1e293b; }
+        .opt-text .opt-desc  { font-size: 0.78rem; color: #94a3b8; margin-top: 1px; }
+        .opt-check {
+            margin-left: auto; width: 22px; height: 22px; border-radius: 7px;
+            border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; flex-shrink: 0;
+        }
+        .inspect-option.selected .opt-check {
+            border-color: var(--opt-color, #6366f1); background: var(--opt-color, #6366f1); color: #fff;
+        }
+        .opt-late-info {
+            display: none; margin-top: 8px; padding: 10px 14px;
+            background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+            font-size: 0.82rem; color: #92400e;
+        }
+        .opt-late-info.show { display: block; }
+        .inspect-note {
+            display: none; margin-top: 12px;
+        }
+        .inspect-note.show { display: block; }
+        .inspect-note textarea {
+            border: 2px solid #e2e8f0; border-radius: 12px; padding: 10px 14px;
+            font-size: 0.85rem; resize: vertical; min-height: 70px; width: 100%;
+            transition: border-color 0.2s;
+        }
+        .inspect-note textarea:focus { border-color: #6366f1; outline: none; }
+
+        /* LATE FINE CALCULATOR */
+        .late-calc-section {
+            display: none; margin-top: 14px;
+            background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 14px;
+            padding: 14px 16px;
+        }
+        .late-calc-section.show { display: block; }
+        .late-calc-section .calc-title {
+            font-size: 0.78rem; font-weight: 700; color: #92400e;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+        }
+        .late-inputs { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .late-input-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 70px; }
+        .late-input-group label { font-size: 0.72rem; font-weight: 700; color: #78716c; text-transform: uppercase; }
+        .late-input-group input {
+            border: 2px solid #fde68a; border-radius: 10px; padding: 8px 10px;
+            font-size: 0.88rem; font-weight: 700; color: #1e293b; width: 100%;
+            text-align: center; background: #fff;
+        }
+        .late-input-group input:focus { border-color: #f59e0b; outline: none; }
+        .fine-result {
+            margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+            background: #fff; border: 1.5px solid #fde68a;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .fine-result .fine-label { font-size: 0.82rem; color: #78716c; font-weight: 600; }
+        .fine-result .fine-amount { font-size: 1.05rem; font-weight: 800; color: #dc2626; }
+
         /* NULL DATE */
         .date-pending { color: #b45309; font-style: italic; font-size: 0.82rem; }
+
+        /* OVERDUE LIVE TIMER */
+        .overdue-timer-wrap {
+            display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .overdue-label {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #dc2626; opacity: 0.8;
+        }
+        .overdue-timer {
+            font-size: 1.05rem; font-weight: 800; color: #dc2626;
+            font-family: 'Courier New', monospace; letter-spacing: 1px;
+            background: #fef2f2; border: 1.5px solid #fecaca;
+            border-radius: 8px; padding: 3px 10px;
+            animation: pulse-red 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+            50%       { box-shadow: 0 0 0 4px rgba(220,38,38,0.15); }
+        }
 
         /* MODAL DAYS */
         .days-option {
@@ -84,32 +199,77 @@
         .days-option small { display: block; font-weight: 400; font-size: 0.75rem; color: #94a3b8; }
         .days-option.selected small { color: #6366f1; }
 
+        /* TEST MODE QUICK BUTTONS */
+        .test-opt {
+            padding: 7px 14px; border-radius: 10px; border: 2px solid #fde68a;
+            background: #fffbeb; color: #b45309; font-weight: 700; font-size: 0.82rem;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .test-opt:hover, .test-opt.selected {
+            background: #f59e0b; border-color: #f59e0b; color: #fff;
+        }
+
+        /* TAB NAV */
+        .tab-nav { display: flex; gap: 0; margin-bottom: 1.5rem; background: #f8fafc; border-radius: 14px; padding: 5px; border: 1px solid #e2e8f0; width: fit-content; }
+        .tab-btn { padding: 9px 22px; border-radius: 10px; font-weight: 600; font-size: 0.88rem; text-decoration: none; transition: all 0.2s; color: #64748b; display: flex; align-items: center; gap: 7px; }
+        .tab-btn:hover { color: #4f46e5; }
+        .tab-btn.active { background: #fff; color: #4f46e5; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
         /* EMPTY */
         .empty-state { padding: 3rem; text-align: center; color: #94a3b8; }
+
+        /* DAMAGE LEVEL OPTIONS */
+        .dmg-opt {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+            padding: 8px 12px; cursor: pointer; transition: all 0.2s;
+            font-size: 0.83rem; font-weight: 500; color: #374151; text-align: left;
+        }
+        .dmg-opt:hover { border-color: #f97316; background: #fff7ed; }
+        .dmg-opt.selected { border-color: #f97316; background: #fff7ed; color: #c2410c; }
+        .dmg-opt.dmg-heavy:hover, .dmg-opt.dmg-heavy.selected { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+        .dmg-opt.dmg-lost:hover, .dmg-opt.dmg-lost.selected  { border-color: #7c3aed; background: #f5f3ff; color: #6d28d9; }
+        .dmg-radio { width: 14px; height: 14px; border: 2px solid #d1d5db; border-radius: 50%; flex-shrink: 0; transition: all 0.2s; }
+        .dmg-opt.selected .dmg-radio { border-color: #f97316; background: #f97316; }
+        .dmg-opt.dmg-heavy.selected .dmg-radio { border-color: #ef4444; background: #ef4444; }
+        .dmg-opt.dmg-lost.selected .dmg-radio  { border-color: #7c3aed; background: #7c3aed; }
+        .dmg-label { flex: 1; }
+        .dmg-pct { font-weight: 800; font-size: 0.82rem; color: #6b7280; background: #f3f4f6; padding: 2px 8px; border-radius: 20px; }
+        .dmg-opt.selected .dmg-pct { background: #ffedd5; color: #c2410c; }
+        .dmg-opt.dmg-heavy.selected .dmg-pct { background: #fee2e2; color: #b91c1c; }
+        .dmg-opt.dmg-lost.selected  .dmg-pct { background: #ede9fe; color: #6d28d9; }
     </style>
 </head>
 <body>
-
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="/admin/book"><i class="fas fa-book-open me-2"></i>Thư Viện Admin</a>
-        <div class="navbar-nav me-auto">
-            <a class="nav-link" href="/admin/book"><i class="fas fa-books me-1"></i>Sách</a>
-            <a class="nav-link" href="/admin/category"><i class="fas fa-tags me-1"></i>Danh Mục</a>
-            <a class="nav-link" href="/admin/warehouse"><i class="fas fa-warehouse me-1"></i>Kho</a>
-            <a class="nav-link active" href="/admin/borrow"><i class="fas fa-hand-holding-heart me-1"></i>Mượn Sách</a>
-        </div>
-        <div class="navbar-nav ms-auto">
-            <form th:action="@{/logout}" method="post" class="d-inline">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <button type="submit" class="btn btn-outline-light btn-sm">
-                    <i class="fas fa-sign-out-alt me-1"></i>Đăng Xuất
-                </button>
-            </form>
-        </div>
+<div class="page-layout">
+<aside class="admin-sidebar">
+    <a class="sidebar-brand" href="/admin/book">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">Thư Viện</span><span class="brand-sub">Admin Panel</span></div>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="/admin/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/book" data-abbr="S" class="sidebar-link"><span>Sách</span></a>
+        <a href="/admin/category" data-abbr="DM" class="sidebar-link"><span>Danh Mục</span></a>
+        <a href="/admin/warehouse" data-abbr="K" class="sidebar-link"><span>Kho</span></a>
+        <a href="/admin/borrow" data-abbr="MT" class="sidebar-link active"><span>Mượn/Trả</span></a>
+        <a href="/admin/borrow/history" data-abbr="LS" class="sidebar-link"><span>Lịch Sử Phiếu</span></a>
+        <div class="sidebar-divider"></div>
+        <a href="/admin/borrow/violations" data-abbr="VP" class="sidebar-link warn"><span>Vi Phạm</span></a>
+        <a href="/admin/users" data-abbr="TV" class="sidebar-link"><span>Thẻ Thư Viện</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout"><i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span></button>
+        </form>
     </div>
-</nav>
+</aside>
+<div class="admin-main">
 
 <div class="container-lg py-4">
 
@@ -117,9 +277,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 style="font-size:1.5rem;font-weight:800;margin:0;">
-                <i class="fas fa-hand-holding-heart me-2" style="color:#ef4444;"></i>Quản Lý Phiếu Mượn Sách
+                <i class="fas fa-tasks me-2" style="color:#6366f1;"></i>Phiếu Mượn Đang Xử Lý
             </h1>
-            <p class="text-muted mb-0" style="font-size:0.85rem;">Theo dõi và quản lý toàn bộ giao dịch mượn trả sách trong thư viện.</p>
+            <p class="text-muted mb-0" style="font-size:0.85rem;">Phiếu đặt chỗ online và sách đang mượn. Sách đã trả chỉ hiển thị ở trang <a href="/admin/borrow/history" data-abbr="LS" class="text-primary fw-bold">Lịch Sử Mượn</a>.</p>
         </div>
         <a href="/admin/borrow/new" class="btn btn-warning fw-bold text-dark px-4">
             <i class="fas fa-plus me-1"></i>Tạo Phiếu Mượn Tại Quầy
@@ -136,19 +296,27 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
+    <!-- TAB NAVIGATION -->
+    <div class="tab-nav">
+        <a href="/admin/borrow" data-abbr="MT" class="tab-btn active">
+            <i class="fas fa-tasks"></i> Phiếu Đang Xử Lý
+            <span class="badge" style="background:#6366f1;color:#fff;font-size:0.72rem;padding:2px 7px;border-radius:5px;" th:text="${#lists.size(borrows)}">0</span>
+        </a>
+        <a href="/admin/borrow/history" data-abbr="LS" class="tab-btn">
+            <i class="fas fa-history"></i> Lịch Sử Mượn
+        </a>
+    </div>
+
     <!-- STAT PILLS -->
     <div class="stat-pills">
         <span class="stat-pill pill-total">
-            <i class="fas fa-list"></i> Tổng: <strong th:text="${#lists.size(borrows)}">0</strong> phiếu
+            <i class="fas fa-list"></i> Đang xử lý: <strong th:text="${#lists.size(borrows)}">0</strong> phiếu
+        </span>
+        <span class="stat-pill pill-reserved">
+            <i class="fas fa-bookmark"></i> Chờ xác nhận
         </span>
         <span class="stat-pill pill-active">
             <i class="fas fa-book-reader"></i> Đang mượn
-        </span>
-        <span class="stat-pill pill-reserved">
-            <i class="fas fa-bookmark"></i> Đã đặt chỗ
-        </span>
-        <span class="stat-pill pill-returned">
-            <i class="fas fa-check"></i> Đã trả
         </span>
     </div>
 
@@ -195,6 +363,13 @@
                             <small class="text-info"><i class="fas fa-envelope me-1"></i><span th:text="${br.user.email}"></span></small>
                         </td>
                         <td class="text-start">
+                            <!-- Badge khi phiếu có nhiều sách -->
+                            <span th:if="${br.details.size() > 1}"
+                                  class="badge mb-1"
+                                  style="background:rgba(99,102,241,0.12);color:#6366f1;border:1px solid rgba(99,102,241,0.3);font-size:0.72rem;">
+                                <i class="fas fa-layer-group me-1"></i>
+                                <span th:text="${br.details.size()} + ' cuốn gộp'"></span>
+                            </span>
                             <ul class="list-unstyled mb-0">
                                 <li th:each="det : ${br.details}" class="mb-1">
                                     <i class="fas fa-book fa-sm text-primary me-1"></i>
@@ -214,13 +389,24 @@
                                 <i class="fas fa-clock me-1"></i>Chờ xác nhận
                             </span>
                         </td>
-                        <!-- Hạn trả: null nếu chưa xác nhận -->
+                        <!-- Hạn trả -->
                         <td>
-                            <span th:if="${br.dueDate != null}" class="fw-bold text-danger"
-                                  th:text="${#temporals.format(br.dueDate, 'dd-MM-yyyy HH:mm')}"></span>
+                            <!-- Chưa set (chưa xác nhận) -->
                             <span th:if="${br.dueDate == null}" class="date-pending">
                                 <i class="fas fa-hourglass me-1"></i>Chưa set
                             </span>
+                            <!-- Quá hạn: hiện bộ đếm thời gian trễ (timer chạy thực) -->
+                            <div th:if="${br.dueDate != null and br.dueDate.isBefore(now)}"
+                                 class="overdue-timer-wrap">
+                                <span class="overdue-label"><i class="fas fa-fire me-1"></i>Quá hạn!</span>
+                                <span class="overdue-timer"
+                                      th:data-due="${#temporals.format(br.dueDate, 'yyyy-MM-dd HH:mm:ss')}"
+                                      data-timer="overdue">00:00:00</span>
+                            </div>
+                            <!-- Chưa quá hạn: hiện ngày bình thường -->
+                            <span th:if="${br.dueDate != null and !br.dueDate.isBefore(now)}"
+                                  class="fw-bold text-danger"
+                                  th:text="${#temporals.format(br.dueDate, 'dd-MM-yyyy HH:mm')}"></span>
                         </td>
                         <td>
                             <span th:if="${br.recordStatus == 'Đang mượn'}"   class="badge bg-primary px-3 py-2"   th:text="${br.recordStatus}"></span>
@@ -239,16 +425,27 @@
                                     <i class="fas fa-check-circle me-1"></i>Xác nhận giao sách
                                 </button>
                             </div>
-                            <!-- Nút đánh dấu đã trả (chỉ hiện khi Đang mượn) -->
-                            <div th:if="${br.recordStatus == 'Đang mượn'}">
-                                <form th:action="@{'/admin/borrow/' + ${br.borrowId} + '/return'}" method="post"
-                                      onsubmit="return confirm('Xác nhận đánh dấu Phiếu #' + this.dataset.id + ' là Đã Trả?')"
-                                      th:data-id="${br.borrowId}">
-                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                    <button type="submit" class="btn-return-book">
-                                        <i class="fas fa-undo-alt me-1"></i>Đánh dấu Đã Trả
-                                    </button>
-                                </form>
+                            <!-- Nút mở popup Kiểm Tra Trả Sách (chỉ hiện khi Đang mượn) -->
+                             <!-- Nut mo popup Kiem Tra Tra Sach (chi hien khi Dang muon) -->
+                             <div th:if="${br.recordStatus == 'Đang mượn'}">
+                                <button class="btn-return-book"
+                                        th:data-borrow-id="${br.borrowId}"
+                                        th:data-reader-name="${br.user.fullName}"
+                                        th:data-book-count="${br.details.size()}"
+                                        th:data-due-date="${br.dueDate != null ? #temporals.format(br.dueDate, 'dd/MM/yyyy HH:mm') : ''}" 
+                                        th:data-is-overdue="${br.dueDate != null and br.dueDate.isBefore(now)}"
+                                        onclick="openReturnModal(this)">
+                                    <i class="fas fa-clipboard-check me-1"></i>Kiểm Tra &amp; Trả Sách
+                                </button>
+                                <span th:each="det : ${br.details}"
+                                      class="d-none return-book-title"
+                                      th:data-borrow-id="${br.borrowId}"
+                                      th:text="${det.bookCopy.book.title}"></span>
+                                <span th:each="det : ${br.details}"
+                                      class="d-none return-book-price"
+                                      th:data-borrow-id="${br.borrowId}"
+                                      th:data-book-id="${det.bookCopy.book.bookId}"
+                                      th:data-price="${bookPriceMap[det.bookCopy.book.bookId] != null ? bookPriceMap[det.bookCopy.book.bookId] : 0}"></span>
                             </div>
                             <!-- Phiếu kết thúc -->
                             <span th:if="${br.recordStatus == 'Đã trả' || br.recordStatus == 'Đã hủy'}"
@@ -258,8 +455,9 @@
                     <tr th:if="${#lists.isEmpty(borrows)}">
                         <td colspan="7">
                             <div class="empty-state">
-                                <i class="fas fa-inbox fa-3x mb-3" style="opacity:0.2;"></i>
-                                <div>Hệ thống chưa ghi nhận đơn mượn nào.</div>
+                                <i class="fas fa-check-circle fa-3x mb-3" style="opacity:0.3;color:#22c55e;"></i>
+                                <div class="fw-bold mb-1" style="color:#64748b;">Không có phiếu nào đang chờ xử lý</div>
+                                <small class="text-muted">Tất cả phiếu đã hoàn tất. Xem <a href="/admin/borrow/history" data-abbr="LS" class="text-primary">Lịch Sử Mượn</a>.</small>
                             </div>
                         </td>
                     </tr>
@@ -285,33 +483,79 @@
                     <strong id="modalReaderName" class="text-dark"></strong>
                 </p>
                 <hr class="my-3">
-                <p class="fw-bold mb-3" style="font-size:0.85rem; color:#1e293b;">
-                    <i class="fas fa-calendar-alt me-1 text-success"></i>Chọn thời hạn mượn:
-                </p>
-                <!-- Quick select -->
-                <div class="text-center mb-3">
-                    <div class="days-option selected" onclick="selectDays(7, this)">
-                        7 ngày<small>Tiêu chuẩn</small>
+
+                <!-- Mode tabs -->
+                <div style="display:flex; gap:8px; margin-bottom:1rem;">
+                    <button type="button" id="tabNormal" onclick="switchConfirmTab('normal')"
+                        style="flex:1; padding:8px; border-radius:10px; border:2px solid #16a34a;
+                               background:#f0fdf4; color:#16a34a; font-weight:700; font-size:0.82rem; cursor:pointer;">
+                        <i class="fas fa-calendar-alt me-1"></i>Bình thường
+                    </button>
+                    <button type="button" id="tabTest" onclick="switchConfirmTab('test')"
+                        style="flex:1; padding:8px; border-radius:10px; border:2px solid #e2e8f0;
+                               background:#f8fafc; color:#94a3b8; font-weight:700; font-size:0.82rem; cursor:pointer;">
+                        <i class="fas fa-flask me-1"></i>Test Mode ⚡
+                    </button>
+                </div>
+
+                <!-- NORMAL: chọn ngày -->
+                <div id="panelNormal">
+                    <p class="fw-bold mb-3" style="font-size:0.85rem; color:#1e293b;">
+                        <i class="fas fa-calendar-alt me-1 text-success"></i>Chọn thời hạn mượn:
+                    </p>
+                    <div class="text-center mb-3">
+                        <div class="days-option selected" onclick="selectDays(7, this)">
+                            7 ngày<small>Tiêu chuẩn</small>
+                        </div>
+                        <div class="days-option" onclick="selectDays(14, this)">
+                            14 ngày<small>Mở rộng</small>
+                        </div>
+                        <div class="days-option" onclick="selectDays(30, this)">
+                            30 ngày<small>Dài hạn</small>
+                        </div>
                     </div>
-                    <div class="days-option" onclick="selectDays(14, this)">
-                        14 ngày<small>Mở rộng</small>
-                    </div>
-                    <div class="days-option" onclick="selectDays(30, this)">
-                        30 ngày<small>Dài hạn</small>
+                    <div class="mt-3">
+                        <label class="form-label fw-bold" style="font-size:0.82rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">
+                            Hoặc nhập số ngày tùy chỉnh:
+                        </label>
+                        <div class="input-group">
+                            <input type="number" id="customDaysInput" class="form-control" min="1" max="90"
+                                   placeholder="VD: 21" style="border-radius:12px 0 0 12px; border:2px solid #e2e8f0;"
+                                   oninput="onCustomInput(this)">
+                            <span class="input-group-text fw-bold" style="border:2px solid #e2e8f0; border-left:none; border-radius:0 12px 12px 0;">Ngày</span>
+                        </div>
+                        <small class="text-muted">Tối đa 90 ngày.</small>
                     </div>
                 </div>
-                <!-- Custom input -->
-                <div class="mt-3">
-                    <label class="form-label fw-bold" style="font-size:0.82rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">
-                        Hoặc nhập số ngày tùy chỉnh:
-                    </label>
-                    <div class="input-group">
-                        <input type="number" id="customDaysInput" class="form-control" min="1" max="90"
-                               placeholder="VD: 21" style="border-radius:12px 0 0 12px; border:2px solid #e2e8f0;"
-                               oninput="onCustomInput(this)">
-                        <span class="input-group-text fw-bold" style="border:2px solid #e2e8f0; border-left:none; border-radius:0 12px 12px 0;">Ngày</span>
+
+                <!-- TEST: chọn phút/giờ -->
+                <div id="panelTest" style="display:none;">
+                    <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:12px; padding:10px 14px; margin-bottom:14px;">
+                        <div style="font-size:0.78rem; font-weight:700; color:#92400e;">
+                            <i class="fas fa-flask me-1"></i>TEST MODE — Chỉ dùng để kiểm tra logic quá hạn
+                        </div>
                     </div>
-                    <small class="text-muted">Tối đa 90 ngày.</small>
+                    <p class="fw-bold mb-2" style="font-size:0.85rem; color:#1e293b;">Chọn nhanh:</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                        <button type="button" class="test-opt" onclick="selectMinutes(1, this)">1 phút</button>
+                        <button type="button" class="test-opt" onclick="selectMinutes(2, this)">2 phút</button>
+                        <button type="button" class="test-opt" onclick="selectMinutes(5, this)">5 phút</button>
+                        <button type="button" class="test-opt" onclick="selectMinutes(10, this)">10 phút</button>
+                        <button type="button" class="test-opt" onclick="selectMinutes(30, this)">30 phút</button>
+                        <button type="button" class="test-opt" onclick="selectMinutes(60, this)">1 giờ</button>
+                        <button type="button" class="test-opt" onclick="selectMinutes(120, this)">2 giờ</button>
+                    </div>
+                    <div>
+                        <label class="form-label fw-bold" style="font-size:0.82rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">
+                            Hoặc nhập số phút tùy chỉnh:
+                        </label>
+                        <div class="input-group">
+                            <input type="number" id="customMinutesInput" class="form-control" min="1"
+                                   placeholder="VD: 45" style="border-radius:12px 0 0 12px; border:2px solid #fde68a;"
+                                   oninput="onCustomMinutesInput(this)">
+                            <span class="input-group-text fw-bold" style="border:2px solid #fde68a; border-left:none; border-radius:0 12px 12px 0; background:#fffbeb; color:#b45309;">Phút</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer" style="border:none; padding:1rem 1.5rem 1.5rem;">
@@ -319,8 +563,281 @@
                 <form id="confirmBorrowForm" method="post">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <input type="hidden" name="borrowDays" id="borrowDaysInput" value="7"/>
+                    <input type="hidden" name="borrowMinutes" id="borrowMinutesInput" value="0"/>
                     <button type="submit" class="btn btn-success fw-bold px-4 rounded-3">
                         <i class="fas fa-paper-plane me-1"></i>Xác Nhận Giao Sách
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ MODAL KIỂM TRA TÌNH TRẠNG TRẢ SÁCH ══════════ -->
+<div class="modal fade" id="returnInspectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px; border:none; overflow:hidden;">
+            <div class="inspect-header">
+                <h5><i class="fas fa-clipboard-check me-2"></i>Kiểm Tra Tình Trạng Trả Sách</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="position:absolute;top:16px;right:16px;"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Thông tin phiếu -->
+                <div class="inspect-info">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="info-label"><i class="fas fa-user me-1"></i>Độc giả</div>
+                            <div class="info-value" id="returnReaderName">—</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="info-label"><i class="fas fa-book me-1"></i>Số lượng sách</div>
+                            <div class="info-value" id="returnBookCount">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danh sách sách -->
+                <div class="mb-2" style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Sách đã mượn</div>
+                <ul class="inspect-book-list" id="returnBookList"></ul>
+
+                <!-- Cảnh báo quá hạn tự động -->
+                <div class="opt-late-info" id="overdueWarning">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <strong>Phát hiện trả muộn!</strong> Phiếu này đã quá hạn trả (<span id="overdueDateText"></span>). Hệ thống đã tự động đánh dấu "Trả muộn hạn".
+                </div>
+
+                <div class="inspect-divider"></div>
+
+                <!-- 3 Lựa chọn kiểm tra -->
+                <div class="mb-2" style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Tình trạng sách trả về</div>
+                <div class="inspect-options">
+                    <!-- Option 1: Nguyên vẹn -->
+                    <div class="inspect-option opt-intact selected" id="optIntact" onclick="selectInspectOption('intact')">
+                        <div class="opt-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="opt-text">
+                            <div class="opt-title">Nguyên vẹn</div>
+                            <div class="opt-desc">Sách được trả trong tình trạng tốt, không hư hỏng</div>
+                        </div>
+                        <div class="opt-check"><i class="fas fa-check" style="font-size:0.7rem;"></i></div>
+                    </div>
+
+                    <!-- Option 2: Trả muộn hạn -->
+                    <div class="inspect-option opt-late" id="optLate" onclick="selectInspectOption('late')">
+                        <div class="opt-icon"><i class="fas fa-clock"></i></div>
+                        <div class="opt-text">
+                            <div class="opt-title">Trả muộn hạn</div>
+                            <div class="opt-desc">Độc giả trả sách sau thời hạn quy định</div>
+                        </div>
+                        <div class="opt-check"><i class="fas fa-check" style="font-size:0.7rem;"></i></div>
+                    </div>
+
+                    <!-- Option 3: Sách bị hư hỏng -->
+                    <div class="inspect-option opt-damaged" id="optDamaged" onclick="selectInspectOption('damaged')">
+                        <div class="opt-icon"><i class="fas fa-heart-broken"></i></div>
+                        <div class="opt-text">
+                            <div class="opt-title">Sách bị hư hỏng</div>
+                            <div class="opt-desc">Sách bị rách, bẩn, mất trang hoặc hư hỏng khác</div>
+                        </div>
+                        <div class="opt-check"><i class="fas fa-check" style="font-size:0.7rem;"></i></div>
+                    </div>
+                </div>
+
+                <!-- Mức độ hư hỏng (chỉ hiện khi chọn Sách bị hư hỏng) -->
+                <div id="damageSection" style="display:none; margin-top:10px;">
+
+                    <!-- CHỌN QUYỂN SÁCH BỊ HƯ HỎNG -->
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
+                            <i class="fas fa-book-open me-1"></i>Chọn quyển sách bị hư hỏng
+                        </div>
+                        <div id="damagedBookSelector" style="display:flex;flex-direction:column;gap:6px;"></div>
+                        <div id="damagedBookHint" style="font-size:0.75rem;color:#ef4444;margin-top:4px;display:none;">
+                            <i class="fas fa-exclamation-circle me-1"></i>Vui lòng chọn quyển sách bị hư hỏng trước khi chọn mức độ.
+                        </div>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+                            <i class="fas fa-search me-1"></i>Phân loại mức độ hư hỏng
+                        </div>
+                        <!-- NÚT ? GIẢI THÍCH MỨC PHẠT HƯ HỎNG -->
+                        <button type="button"
+                            style="background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.35);color:#ef4444;
+                                   border-radius:50%;width:24px;height:24px;font-size:0.75rem;font-weight:800;
+                                   cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;
+                                   flex-shrink:0;transition:all 0.2s;"
+                            onclick="toggleDamageInfo()"
+                            title="Cách tính tiền phạt hư hỏng">?
+                        </button>
+                    </div>
+
+                    <!-- BẢNG GIẢI THÍCH MỨC PHẠT HƯ HỎNG (ẩn mặc định) -->
+                    <div id="damageInfoBox" style="display:none;background:#fff1f2;border:1.5px solid #fca5a5;
+                        border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:0.8rem;color:#9f1239;">
+                        <div style="font-weight:700;margin-bottom:6px;"><i class="fas fa-book-dead me-1"></i>Quy tắc tính tiền phạt hư hỏng sách:</div>
+                        <div style="font-size:0.75rem;color:#6b7280;margin-bottom:6px;font-style:italic;">
+                            Tiền phạt = Giá bìa sách × Tỉ lệ % theo mức hư hỏng
+                        </div>
+                        <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                            <thead>
+                                <tr style="background:rgba(239,68,68,0.08);border-bottom:1.5px solid #fca5a5;">
+                                    <th style="padding:4px 6px;text-align:left;color:#b91c1c;">Tình trạng</th>
+                                    <th style="padding:4px 6px;text-align:center;color:#b91c1c;">Tỉ lệ</th>
+                                    <th style="padding:4px 6px;text-align:left;color:#b91c1c;">Ví dụ (sách 100.000đ)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom:1px solid #fecaca;">
+                                    <td style="padding:4px 6px;"><i class="fas fa-angle-right me-1 text-orange-500"></i>Rách ít</td>
+                                    <td style="padding:4px 6px;text-align:center;font-weight:700;color:#c2410c;">20%</td>
+                                    <td style="padding:4px 6px;color:#6b7280;">20.000đ</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid #fecaca;">
+                                    <td style="padding:4px 6px;"><i class="fas fa-angle-right me-1"></i>Rách nhiều / viết bậy</td>
+                                    <td style="padding:4px 6px;text-align:center;font-weight:700;color:#c2410c;">50%</td>
+                                    <td style="padding:4px 6px;color:#6b7280;">50.000đ</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid #fecaca;">
+                                    <td style="padding:4px 6px;"><i class="fas fa-angle-right me-1"></i>Bong gáy</td>
+                                    <td style="padding:4px 6px;text-align:center;font-weight:700;color:#c2410c;">70%</td>
+                                    <td style="padding:4px 6px;color:#6b7280;">70.000đ</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid #fecaca;">
+                                    <td style="padding:4px 6px;"><i class="fas fa-times me-1 text-danger"></i><strong>Mất trang / Không dùng được</strong></td>
+                                    <td style="padding:4px 6px;text-align:center;font-weight:700;color:#b91c1c;">100%</td>
+                                    <td style="padding:4px 6px;color:#6b7280;">100.000đ</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:4px 6px;"><i class="fas fa-skull-crossbones me-1 text-purple-600"></i><strong>Mất sách</strong></td>
+                                    <td style="padding:4px 6px;text-align:center;font-weight:700;color:#7c3aed;">200%</td>
+                                    <td style="padding:4px 6px;color:#6b7280;">200.000đ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- NHÓM 1: Hư hỏng nhẹ (không mất trang) -->
+                    <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+                        <div style="font-size:0.8rem;font-weight:700;color:#c2410c;margin-bottom:8px;">
+                            <i class="fas fa-exclamation-circle me-1"></i>Hư hỏng nhẹ — không mất trang
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <button type="button" class="dmg-opt" data-pct="20" onclick="selectDamageLevel(this)">
+                                <span class="dmg-radio"></span>
+                                <span class="dmg-label">Rách ít</span>
+                                <span class="dmg-pct">20%</span>
+                            </button>
+                            <button type="button" class="dmg-opt" data-pct="50" onclick="selectDamageLevel(this)">
+                                <span class="dmg-radio"></span>
+                                <span class="dmg-label">Rách nhiều / viết bậy</span>
+                                <span class="dmg-pct">50%</span>
+                            </button>
+                            <button type="button" class="dmg-opt" data-pct="70" onclick="selectDamageLevel(this)">
+                                <span class="dmg-radio"></span>
+                                <span class="dmg-label">Bong gáy</span>
+                                <span class="dmg-pct">70%</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 2: Hư hỏng nặng / mất sách -->
+                    <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:10px 12px;">
+                        <div style="font-size:0.8rem;font-weight:700;color:#b91c1c;margin-bottom:8px;">
+                            <i class="fas fa-times-circle me-1"></i>Hư hỏng nặng / mất sách
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <button type="button" class="dmg-opt dmg-heavy" data-pct="100" onclick="selectDamageLevel(this)">
+                                <span class="dmg-radio"></span>
+                                <span class="dmg-label">Mất trang / Không dùng được</span>
+                                <span class="dmg-pct">100%</span>
+                            </button>
+                            <button type="button" class="dmg-opt dmg-lost" data-pct="200" onclick="selectDamageLevel(this)">
+                                <span class="dmg-radio"></span>
+                                <span class="dmg-label">Mất sách</span>
+                                <span class="dmg-pct">200%</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hiển thị tiền phạt hư hỏng -->
+                    <div class="fine-result" id="damageFineResult" style="display:none;margin-top:8px;">
+                        <span class="fine-label"><i class="fas fa-coins me-1"></i>Tiền phạt hư hỏng:</span>
+                        <span class="fine-amount" id="damageFineDisplay">0đ</span>
+                    </div>
+                </div>
+
+                <!-- Hiển thị thời gian trễ tự động + tính phạt (chỉ hiện khi chọn Trả muộn) -->
+                <div class="late-calc-section" id="lateCalcSection">
+                    <div class="calc-title" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="fas fa-stopwatch me-1"></i>Thời gian trễ &amp; tiền phạt</span>
+                        <!-- NÚT ? GIẢI THÍCH CÁCH TÍNH -->
+                        <button type="button" id="btnFineInfo"
+                            style="background:rgba(99,102,241,0.12);border:1.5px solid rgba(99,102,241,0.35);color:#6366f1;
+                                   border-radius:50%;width:24px;height:24px;font-size:0.75rem;font-weight:800;
+                                   cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;
+                                   flex-shrink:0;transition:all 0.2s;"
+                            onclick="toggleFineInfo()"
+                            title="Cách tính tiền phạt">?
+                        </button>
+                    </div>
+
+                    <!-- BẢNG GIẢI THÍCH CÁCH TÍNH (ẩn mặc định) -->
+                    <div id="fineInfoBox" style="display:none;background:#ede9fe;border:1.5px solid #a5b4fc;
+                        border-radius:12px;padding:10px 12px;margin:8px 0;font-size:0.8rem;color:#3730a3;">
+                        <div style="font-weight:700;margin-bottom:6px;"><i class="fas fa-calculator me-1"></i>Quy tắc tính tiền phạt trả muộn:</div>
+                        <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                            <tr style="border-bottom:1px solid #c7d2fe;">
+                                <td style="padding:4px 6px;"><i class="fas fa-check-circle text-success me-1"></i><strong>Dưới 30 phút</strong></td>
+                                <td style="padding:4px 6px;font-weight:700;color:#059669;">Miễn phạt (0đ)</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #c7d2fe;">
+                                <td style="padding:4px 6px;"><i class="fas fa-clock text-warning me-1"></i><strong>30 phút – &lt; 24 giờ</strong></td>
+                                <td style="padding:4px 6px;font-weight:700;color:#d97706;">2.000đ / giờ (làm tròn)</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:4px 6px;"><i class="fas fa-calendar-times text-danger me-1"></i><strong>Từ 24 giờ trở lên</strong></td>
+                                <td style="padding:4px 6px;font-weight:700;color:#dc2626;">10.000đ / ngày (làm tròn lên)</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- HIỂN THỊ TỰ ĐỘNG thời gian trễ -->
+                    <div style="background:#fff7ed;border:1.5px solid #fde68a;border-radius:12px;padding:10px 14px;margin:8px 0;
+                                display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <div style="font-size:0.78rem;color:#92400e;font-weight:600;"><i class="fas fa-hourglass-half me-1"></i>Thời gian trễ thực tế:</div>
+                        <div id="lateTimeDisplay" style="font-size:1.1rem;font-weight:800;color:#dc2626;font-family:monospace;letter-spacing:1px;">— </div>
+                    </div>
+
+                    <div class="fine-result" id="fineResult">
+                        <span class="fine-label"><i class="fas fa-coins me-1"></i>Tiền phạt tự động:</span>
+                        <span class="fine-amount" id="fineAmountDisplay">0đ</span>
+                    </div>
+                </div>
+
+                <!-- Ghi chú vi phạm (hiện khi chọn muộn / hỏng) -->
+                <div class="inspect-note" id="violationNoteSection">
+                    <label style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">
+                        <i class="fas fa-edit me-1"></i>Ghi chú vi phạm (tuỳ chọn)
+                    </label>
+                    <textarea id="violationNoteInput" placeholder="Mô tả tình trạng vi phạm cụ thể..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none; padding:1rem 1.5rem 1.5rem; gap:8px;">
+                <button type="button" class="btn btn-outline-secondary rounded-3 px-3" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Hủy
+                </button>
+                <form id="returnInspectForm" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="lateReturn" id="hiddenLateReturn" value="false" />
+                    <input type="hidden" name="damagedBook" id="hiddenDamagedBook" value="false" />
+                    <input type="hidden" name="violationNote" id="hiddenViolationNote" value="" />
+                    <input type="hidden" name="lateFineAmount" id="hiddenLateFine" value="0" />
+                    <input type="hidden" name="damageFineAmount" id="hiddenDamageFine" value="0" />
+                    <input type="hidden" name="damagePercentage" id="hiddenDamagePercentage" value="0" />
+                    <input type="hidden" name="damagedBookId" id="hiddenDamagedBookId" value="" />
+                    <button type="submit" class="btn fw-bold px-4 rounded-3" id="btnConfirmReturn"
+                            style="background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;border:none;">
+                        <i class="fas fa-check-double me-1"></i>Xác Nhận Trả Sách
                     </button>
                 </form>
             </div>
@@ -339,8 +856,14 @@
         document.getElementById('modalReaderName').textContent = readerName;
         document.getElementById('confirmBorrowForm').action = '/admin/borrow/' + borrowId + '/confirm';
         document.getElementById('borrowDaysInput').value = 7;
+        document.getElementById('borrowMinutesInput').value = 0;
         document.getElementById('customDaysInput').value = '';
+        if (document.getElementById('customMinutesInput'))
+            document.getElementById('customMinutesInput').value = '';
         selectedDays = 7;
+
+        // Reset về tab bình thường
+        switchConfirmTab('normal');
 
         // Reset quick-select styling
         document.querySelectorAll('.days-option').forEach(el => el.classList.remove('selected'));
@@ -352,6 +875,7 @@
     function selectDays(days, el) {
         selectedDays = days;
         document.getElementById('borrowDaysInput').value = days;
+        document.getElementById('borrowMinutesInput').value = 0; // Tắt test mode
         document.getElementById('customDaysInput').value = '';
         document.querySelectorAll('.days-option').forEach(e => e.classList.remove('selected'));
         el.classList.add('selected');
@@ -362,9 +886,507 @@
         if (val > 0) {
             selectedDays = val;
             document.getElementById('borrowDaysInput').value = val;
+            document.getElementById('borrowMinutesInput').value = 0; // Tắt test mode
             document.querySelectorAll('.days-option').forEach(e => e.classList.remove('selected'));
         }
     }
+
+    // ══════════ TEST MODE FUNCTIONS ══════════
+    function switchConfirmTab(tab) {
+        const isNormal = (tab === 'normal');
+        document.getElementById('panelNormal').style.display = isNormal ? '' : 'none';
+        document.getElementById('panelTest').style.display   = isNormal ? 'none' : '';
+
+        const tabNormal = document.getElementById('tabNormal');
+        const tabTest   = document.getElementById('tabTest');
+        if (isNormal) {
+            tabNormal.style.borderColor = '#16a34a'; tabNormal.style.background = '#f0fdf4'; tabNormal.style.color = '#16a34a';
+            tabTest.style.borderColor   = '#e2e8f0'; tabTest.style.background   = '#f8fafc'; tabTest.style.color   = '#94a3b8';
+            // Reset về mode ngày
+            document.getElementById('borrowMinutesInput').value = 0;
+            document.getElementById('borrowDaysInput').value = selectedDays;
+        } else {
+            tabTest.style.borderColor   = '#f59e0b'; tabTest.style.background   = '#fffbeb'; tabTest.style.color   = '#b45309';
+            tabNormal.style.borderColor = '#e2e8f0'; tabNormal.style.background = '#f8fafc'; tabNormal.style.color = '#94a3b8';
+            // Reset về mode phút (chưa chọn)
+            document.getElementById('borrowMinutesInput').value = 1;
+        }
+    }
+
+    function selectMinutes(mins, el) {
+        document.getElementById('borrowMinutesInput').value = mins;
+        document.getElementById('customMinutesInput').value = '';
+        document.querySelectorAll('.test-opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function onCustomMinutesInput(input) {
+        const val = parseInt(input.value);
+        if (val > 0) {
+            document.getElementById('borrowMinutesInput').value = val;
+            document.querySelectorAll('.test-opt').forEach(e => e.classList.remove('selected'));
+        }
+    }
+
+    // ══════════ RETURN INSPECTION MODAL ══════════
+    let inspectState = { intact: true, late: false, damaged: false };
+    let currentIsOverdue  = false;
+    let currentDueDateStr = null;  // Lưu dueDate để auto-calc phạt trễ
+    let currentBookPrices = [];    // Lưu [{bookId, title, price}] để calc phạt hỏng
+    let currentDamagePct  = 0;     // % hỏng hiện đang chọn
+    let selectedDamagedBookPrice = 0;  // Giá của quyển sách đang bị chọn là hư hỏng
+    let selectedDamagedBookId   = ''; // ID của quyển sách đang bị chọn là hư hỏng
+
+    function toggleFineInfo() {
+        const box = document.getElementById('fineInfoBox');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleDamageInfo() {
+        const box = document.getElementById('damageInfoBox');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function openReturnModal(btn) {
+        const borrowId   = btn.getAttribute('data-borrow-id');
+        const readerName = btn.getAttribute('data-reader-name');
+        const bookCount  = btn.getAttribute('data-book-count');
+        const dueDate    = btn.getAttribute('data-due-date');
+        currentIsOverdue  = btn.getAttribute('data-is-overdue') === 'true';
+        currentDueDateStr = dueDate;
+        currentDamagePct  = 0;
+
+        // Đọc giá sách từ các span ẩn .return-book-price và .return-book-title
+        currentBookPrices = [];
+        const titleSpans = document.querySelectorAll('.return-book-title[data-borrow-id="' + borrowId + '"]');
+        const priceSpans = document.querySelectorAll('.return-book-price[data-borrow-id="' + borrowId + '"]');
+        priceSpans.forEach(function(span, idx) {
+            const bookId = parseInt(span.getAttribute('data-book-id'));
+            const price  = parseFloat(span.getAttribute('data-price')) || 0;
+            const title  = titleSpans[idx] ? titleSpans[idx].textContent.trim() : ('Sách #' + bookId);
+            currentBookPrices.push({ bookId: bookId, title: title, price: price });
+        });
+        selectedDamagedBookPrice = 0;
+        selectedDamagedBookId   = '';
+
+        document.getElementById('returnReaderName').textContent = readerName;
+        document.getElementById('returnBookCount').textContent  = bookCount + ' cuốn';
+
+        // Book list
+        const bookList = document.getElementById('returnBookList');
+        bookList.innerHTML = '';
+        currentBookPrices.forEach(function(b) {
+            if (b.title) {
+                const li = document.createElement('li');
+                li.innerHTML = '<i class="fas fa-book-open"></i> ' + b.title;
+                bookList.appendChild(li);
+            }
+        });
+
+        // Reset book selector
+        document.getElementById('hiddenDamagedBookId').value = '';
+        buildDamagedBookSelector();
+
+        // Overdue
+        const overdueWarning = document.getElementById('overdueWarning');
+        if (currentIsOverdue) {
+            overdueWarning.classList.add('show');
+            document.getElementById('overdueDateText').textContent = 'hạn trả: ' + dueDate;
+            inspectState = { intact: false, late: true, damaged: false };
+        } else {
+            overdueWarning.classList.remove('show');
+            inspectState = { intact: true, late: false, damaged: false };
+        }
+
+        // Reset bảng giải thích + phần hư hỏng
+        const fineInfoBox   = document.getElementById('fineInfoBox');
+        const damageInfoBox = document.getElementById('damageInfoBox');
+        if (fineInfoBox)   fineInfoBox.style.display   = 'none';
+        if (damageInfoBox) damageInfoBox.style.display = 'none';
+        document.querySelectorAll('.dmg-opt').forEach(e => e.classList.remove('selected'));
+        document.getElementById('damageFineResult').style.display = 'none';
+        document.getElementById('damageFineDisplay').textContent  = '0đ';
+        document.getElementById('hiddenDamageFine').value         = 0;
+
+        renderInspectOptions();
+
+        document.getElementById('returnInspectForm').action = '/admin/borrow/' + borrowId + '/return';
+        document.getElementById('violationNoteInput').value  = '';
+        document.getElementById('hiddenViolationNote').value = '';
+
+        new bootstrap.Modal(document.getElementById('returnInspectModal')).show();
+    }
+
+    /**
+     * LOGIC CHỌN:
+     * - Click "Nguyên vẹn": nếu đang có vi phạm → không cho click (bị disabled)
+     *                       nếu chưa chọn gì → chọn nó
+     * - Click "Trả muộn":   nếu chưa quá hạn → không cho click (bị locked)
+     *                       nếu quá hạn → toggle, tự bỏ nguyên vẹn
+     * - Click "Hư hỏng":    nếu đang chọn nguyên vẹn → bỏ nguyên vẹn, chọn hư hỏng
+     *                       nếu đang chọn hư hỏng → bỏ hư hỏng
+     * - Nếu bỏ hết vi phạm → tự quay về nguyên vẹn
+     */
+    function selectInspectOption(option) {
+        if (option === 'intact') {
+            // Chọn nguyên vẹn → Ép bỏ chọn hết các lỗi vi phạm
+            inspectState = { intact: true, late: false, damaged: false };
+        } else if (option === 'late') {
+            // Không cho chọn trả muộn nếu chưa quá hạn
+            if (!currentIsOverdue) return;
+            
+            inspectState.late = !inspectState.late;
+            if (inspectState.late) {
+                 inspectState.intact = false; // Có vi phạm thì bỏ nguyên vẹn
+            } else if (!inspectState.damaged) {
+                 inspectState.intact = true;  // Nếu hết vi phạm thì tự động về nguyên vẹn
+            }
+        } else if (option === 'damaged') {
+            inspectState.damaged = !inspectState.damaged;
+            if (inspectState.damaged) {
+                 inspectState.intact = false; // Có vi phạm thì bỏ nguyên vẹn
+            } else if (!inspectState.late) {
+                 inspectState.intact = true;  // Nếu hết vi phạm thì tự động về nguyên vẹn
+            }
+        }
+        renderInspectOptions();
+    }
+
+    function renderInspectOptions() {
+        const optIntact = document.getElementById('optIntact');
+        const optLate = document.getElementById('optLate');
+        const optDamaged = document.getElementById('optDamaged');
+
+        // 1. Selected highlight
+        optIntact.classList.toggle('selected', inspectState.intact);
+        optLate.classList.toggle('selected', inspectState.late);
+        optDamaged.classList.toggle('selected', inspectState.damaged);
+
+        // 2. Chỉ khoá "Trả muộn" nếu chưa quá hạn
+        if (!currentIsOverdue) {
+            optLate.classList.add('locked');
+        } else {
+            optLate.classList.remove('locked');
+        }
+
+        // 3. Xóa hoàn toàn class disabled (không dùng nữa để tránh gây hiểu nhầm)
+        optIntact.classList.remove('disabled');
+        optLate.classList.remove('disabled');
+        optDamaged.classList.remove('disabled');
+
+        // 5. Hidden fields
+        document.getElementById('hiddenLateReturn').value = inspectState.late;
+        document.getElementById('hiddenDamagedBook').value = inspectState.damaged;
+
+        // 6. Ghi chú vi phạm + ô tính tiền phạt
+        const noteSection    = document.getElementById('violationNoteSection');
+        const calcSection    = document.getElementById('lateCalcSection');
+        const damageSection  = document.getElementById('damageSection');
+        if (inspectState.late || inspectState.damaged) {
+            noteSection.classList.add('show');
+        } else {
+            noteSection.classList.remove('show');
+        }
+        // Hiện ô thi gian chỉ khi chọn Trả muộn
+        if (inspectState.late) {
+            calcSection.classList.add('show');
+            calcAutoFine();
+        } else {
+            calcSection.classList.remove('show');
+            document.getElementById('fineAmountDisplay').textContent = '0đ';
+            document.getElementById('hiddenLateFine').value = 0;
+            document.getElementById('lateTimeDisplay').textContent = '—';
+        }
+        // Hiện phân loại hư hỏng chỉ khi chọn Sách bị hư hỏng
+        if (inspectState.damaged) {
+            damageSection.style.display = '';
+            buildDamagedBookSelector();
+        } else {
+            damageSection.style.display = 'none';
+            // Reset khi bỏ chọn hư hỏng
+            document.querySelectorAll('.dmg-opt').forEach(e => e.classList.remove('selected'));
+            document.getElementById('damageFineResult').style.display = 'none';
+            document.getElementById('damageFineDisplay').textContent  = '0đ';
+            document.getElementById('hiddenDamageFine').value         = 0;
+            document.getElementById('hiddenDamagedBookId').value      = '';
+            currentDamagePct = 0;
+            selectedDamagedBookPrice = 0;
+            selectedDamagedBookId   = '';
+        }
+        syncViolationNote();
+
+        // 7. Nút xác nhận
+        const btn = document.getElementById('btnConfirmReturn');
+        if (inspectState.late || inspectState.damaged) {
+            btn.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
+            btn.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Xác Nhận Trả (Có Vi Phạm)';
+        } else {
+            btn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
+            btn.innerHTML = '<i class="fas fa-check-double me-1"></i>Xác Nhận Trả Sách';
+        }
+    }
+
+    function syncViolationNote() {
+        const noteInput = document.getElementById('violationNoteInput');
+        document.getElementById('hiddenViolationNote').value = noteInput.value;
+    }
+
+    /**
+     * Xây dựng danh sách chọn quyển sách bị hư hỏng
+     */
+    function buildDamagedBookSelector() {
+        const container = document.getElementById('damagedBookSelector');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (currentBookPrices.length === 0) return;
+
+        // Nếu chỉ có 1 cuốn, tự động chọn ngay
+        if (currentBookPrices.length === 1) {
+            const b = currentBookPrices[0];
+            selectedDamagedBookPrice = b.price;
+            selectedDamagedBookId   = b.bookId;
+            document.getElementById('hiddenDamagedBookId').value = b.bookId;
+            const info = document.createElement('div');
+            info.style.cssText = 'background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:8px 12px;font-size:0.84rem;font-weight:600;color:#c2410c;';
+            const priceStr = b.price > 0 ? ' — Giá: ' + b.price.toLocaleString('vi-VN') + 'đ' : ' — Chưa có giá kho';
+            info.innerHTML = '<i class="fas fa-book me-1"></i>' + b.title + priceStr;
+            container.appendChild(info);
+            calcDamageFine();
+            return;
+        }
+
+        // Nhiều cuốn: hiện radio buttons
+        currentBookPrices.forEach(function(b) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dmg-opt' + (String(b.bookId) === String(selectedDamagedBookId) ? ' selected' : '');
+            btn.style.cssText = 'width:100%;display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 12px;cursor:pointer;transition:all 0.2s;font-size:0.83rem;font-weight:500;color:#374151;text-align:left;';
+            const priceStr = b.price > 0 ? b.price.toLocaleString('vi-VN') + 'đ' : 'Chưa có giá';
+            btn.innerHTML =
+                '<span class="dmg-radio" style="flex-shrink:0;"></span>' +
+                '<span style="flex:1;">' + b.title + '</span>' +
+                '<span style="font-size:0.78rem;font-weight:700;color:#6b7280;background:#f3f4f6;padding:2px 8px;border-radius:20px;white-space:nowrap;">' + priceStr + '</span>';
+            btn.addEventListener('click', function() {
+                // Deselect all
+                container.querySelectorAll('button').forEach(function(b2) {
+                    b2.classList.remove('selected');
+                    b2.style.borderColor = '#e2e8f0';
+                    b2.style.background  = '#fff';
+                    b2.style.color       = '#374151';
+                    const r = b2.querySelector('.dmg-radio');
+                    if (r) { r.style.borderColor = '#d1d5db'; r.style.background = 'transparent'; }
+                });
+                // Select this
+                btn.classList.add('selected');
+                btn.style.borderColor = '#f97316';
+                btn.style.background  = '#fff7ed';
+                btn.style.color       = '#c2410c';
+                const r = btn.querySelector('.dmg-radio');
+                if (r) { r.style.borderColor = '#f97316'; r.style.background = '#f97316'; }
+
+                selectedDamagedBookPrice = b.price;
+                selectedDamagedBookId   = b.bookId;
+                document.getElementById('hiddenDamagedBookId').value = b.bookId;
+                document.getElementById('damagedBookHint').style.display = 'none';
+                calcDamageFine();
+            });
+            container.appendChild(btn);
+        });
+    }
+
+    /**
+     * Chọn mức độ hư hỏng sách — tự động tính tiền phạt theo %
+     * Tỉ lệ áp dụng lên giá bìa của quyển sách được chọn bị hỏng.
+     */
+    function selectDamageLevel(el) {
+        // Nếu có nhiều sách mà chưa chọn quyển bị hỏng → cảnh báo
+        if (currentBookPrices.length > 1 && !selectedDamagedBookId) {
+            document.getElementById('damagedBookHint').style.display = '';
+            return;
+        }
+        document.getElementById('damagedBookHint').style.display = 'none';
+
+        // Toggle: click lại cùng cái thì bỏ chọn
+        if (el.classList.contains('selected')) {
+            el.classList.remove('selected');
+            currentDamagePct = 0;
+            document.getElementById('damageFineResult').style.display = 'none';
+            document.getElementById('damageFineDisplay').textContent  = '0đ';
+            document.getElementById('hiddenDamageFine').value         = 0;
+            document.getElementById('hiddenDamagePercentage').value   = 0;
+            return;
+        }
+
+        // Bỏ chọn các option khác
+        document.querySelectorAll('.dmg-opt:not(#damagedBookSelector button)').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        currentDamagePct = parseInt(el.getAttribute('data-pct')) || 0;
+        document.getElementById('hiddenDamagePercentage').value = currentDamagePct;
+        calcDamageFine();
+    }
+
+    /**
+     * Tính tiền phạt hư hỏng = giá của quyển sách bị chọn × %
+     * Nếu không có giá kho → thông báo chưa có dữ liệu.
+     */
+    function calcDamageFine() {
+        if (currentDamagePct === 0) {
+            document.getElementById('damageFineResult').style.display = 'none';
+            document.getElementById('hiddenDamageFine').value = 0;
+            return;
+        }
+
+        // Lấy giá của quyển sách được chọn bị hỏng
+        const bookPrice = selectedDamagedBookPrice || 0;
+        if (bookPrice <= 0) {
+            document.getElementById('damageFineDisplay').textContent = 'Chưa có giá kho';
+            document.getElementById('damageFineResult').style.display = '';
+            document.getElementById('hiddenDamageFine').value = 0;
+            return;
+        }
+
+        const fine = Math.round(bookPrice * currentDamagePct / 100);
+        // Tìm tên sách đang được chọn
+        const bookInfo = currentBookPrices.find(b => String(b.bookId) === String(selectedDamagedBookId));
+        const bookLabel = bookInfo ? bookInfo.title : 'sách đã chọn';
+        document.getElementById('damageFineDisplay').textContent =
+            fine.toLocaleString('vi-VN') + 'đ (' + currentDamagePct + '% × ' + bookPrice.toLocaleString('vi-VN') + 'đ — ' + bookLabel + ')';
+        document.getElementById('damageFineResult').style.display = '';
+        document.getElementById('hiddenDamageFine').value = fine;
+    }
+
+    /**
+     * Tự động tính tiền phạt từ dueDate (currentDueDateStr) so với thời gian hiện tại.
+     * Quy tắc:
+     * - Trễ < 30 phút         → 0đ (miễn phạt)
+     * - 30ph ≤ trễ < 24h      → 2.000đ / giờ (làm tròn)
+     * - Trễ ≥ 24h              → 10.000đ / ngày (ceil)
+     */
+    function calcAutoFine() {
+        if (!currentDueDateStr) return;
+
+        // Parse dueDate — hỗ trợ cả 'dd/MM/yyyy HH:mm' (dấu /) và 'dd-MM-yyyy HH:mm' (dấu -)
+        let dueMs;
+        try {
+            const parts = currentDueDateStr.match(/(\d+)[\/-](\d+)[\/-](\d+)(?:\s+(\d+):(\d+))?/);
+            if (parts) {
+                const d  = parseInt(parts[1]);
+                const m  = parseInt(parts[2]);
+                const y  = parseInt(parts[3]);
+                const hh = parts[4] !== undefined ? parseInt(parts[4]) : 23;
+                const mm = parts[5] !== undefined ? parseInt(parts[5]) : 59;
+                dueMs = new Date(y, m - 1, d, hh, mm, 0).getTime();
+            } else {
+                dueMs = NaN;
+            }
+        } catch (e) {
+            dueMs = NaN;
+        }
+        if (isNaN(dueMs)) {
+            document.getElementById('lateTimeDisplay').textContent = 'Lỗi định dạng ngày';
+            return;
+        }
+
+        const now = Date.now();
+        const diffMs = now - dueMs;
+        if (diffMs <= 0) {
+            document.getElementById('lateTimeDisplay').textContent = 'Chưa quá hạn';
+            document.getElementById('fineAmountDisplay').textContent = '0đ';
+            document.getElementById('hiddenLateFine').value = 0;
+            return;
+        }
+
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const totalHours   = diffMs / 3600000;
+
+        // Hiển thị thời gian trễ dễ đọc
+        const daysLate  = Math.floor(totalMinutes / 1440);
+        const hoursLate = Math.floor((totalMinutes % 1440) / 60);
+        const minsLate  = totalMinutes % 60;
+        let displayStr = '';
+        if (daysLate > 0) displayStr += daysLate + 'ngày ';
+        if (hoursLate > 0 || daysLate > 0) displayStr += hoursLate + 'giờ ';
+        displayStr += minsLate + 'phút';
+        document.getElementById('lateTimeDisplay').textContent = displayStr.trim();
+
+        // Tính tiền phạt
+        let fine = 0;
+        if (totalMinutes < 30) {
+            fine = 0;
+        } else if (totalHours < 24) {
+            const billableHours = Math.round(totalMinutes / 60) || 1;
+            fine = billableHours * 2000;
+        } else {
+            const billableDays = Math.ceil(totalHours / 24);
+            fine = billableDays * 10000;
+        }
+
+        document.getElementById('fineAmountDisplay').textContent = fine.toLocaleString('vi-VN') + 'đ';
+        document.getElementById('hiddenLateFine').value = fine;
+    }
+    // Sync on every input
+    document.addEventListener('DOMContentLoaded', function() {
+        const noteInput = document.getElementById('violationNoteInput');
+        if (noteInput) {
+            noteInput.addEventListener('input', syncViolationNote);
+        }
+    });
+
+    // --- LƯU VÀ KHÔI PHỤC VỊ TRÍ CUỘN TRANG (UX CẤP ĐỘ CAO) ---
+    // Khôi phục scroll
+    document.addEventListener("DOMContentLoaded", function() {
+        const scrollPos = sessionStorage.getItem("adminBorrowScrollPos");
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+            sessionStorage.removeItem("adminBorrowScrollPos"); // Xóa đi tránh lỗi khi sang trang khác
+        }
+    });
+
+    // Lưu vị trí cuộn trước khi bất kỳ form submit nào chạy (Duyệt / Trả)
+    document.addEventListener("submit", function() {
+        sessionStorage.setItem("adminBorrowScrollPos", window.scrollY);
+    });
+
+    // ══════════ BỘ ĐẾM THỜI GIAN QUÁ HẠN (REALTIME) ══════════
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function formatElapsed(totalSeconds) {
+        const days    = Math.floor(totalSeconds / 86400);
+        const hours   = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const secs    = totalSeconds % 60;
+        if (days > 0) {
+            return days + 'n ' + pad(hours) + ':' + pad(minutes) + ':' + pad(secs);
+        }
+        return pad(hours) + ':' + pad(minutes) + ':' + pad(secs);
+    }
+
+    function startAllOverdueTimers() {
+        const timers = document.querySelectorAll('[data-timer="overdue"]');
+        timers.forEach(function(el) {
+            const dueStr = el.getAttribute('data-due'); // "yyyy-MM-dd HH:mm:ss"
+            if (!dueStr) return;
+            // Parse: "2026-04-09 03:15:00" → Date object
+            const dueDate = new Date(dueStr.replace(' ', 'T'));
+
+            function tick() {
+                const now = new Date();
+                const elapsedMs = now - dueDate;
+                if (elapsedMs < 0) {
+                    el.textContent = '00:00:00';
+                    return;
+                }
+                el.textContent = formatElapsed(Math.floor(elapsedMs / 1000));
+            }
+
+            tick(); // chạy ngay lập tức
+            setInterval(tick, 1000); // cập nhật mỗi giây
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', startAllOverdueTimers);
 </script>
+</div></div>
 </body>
 </html>

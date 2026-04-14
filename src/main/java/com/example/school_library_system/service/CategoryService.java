@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class CategoryService {
@@ -17,14 +18,16 @@ public class CategoryService {
     }
 
     public Category getCategoryById(Integer id) {
+        if (id == null) return null;
         return categoryRepository.findById(id).orElse(null);
     }
 
     public Category saveCategory(Category category) {
-        return categoryRepository.save(category);
+        return categoryRepository.save(Objects.requireNonNull(category, "Category must not be null"));
     }
 
     public void deleteCategory(Integer id) {
+        if (id == null) return;
         categoryRepository.deleteById(id);
     }
 }

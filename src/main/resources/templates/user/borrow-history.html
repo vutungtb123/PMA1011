@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Sử Mượn Sách — SchoolLib</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <style>
+        :root {
+            --primary: #6366f1; --primary-light: #818cf8; --accent: #f59e0b;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-surface: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #94a3b8; --border: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
+
+        .content-wrapper { max-width: 960px; margin: 2.5rem auto; padding: 0 1.25rem; }
+
+        .page-header { margin-bottom: 2rem; }
+        .page-header h1 { font-size: 1.8rem; font-weight: 800; display: flex; align-items: center; gap: 12px; color: var(--text-secondary); }
+        .page-header p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 6px; }
+
+        .custom-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        .table-custom { color: var(--text-primary); margin-bottom: 0; }
+        .table-custom th { background: rgba(255,255,255,0.02); border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; padding: 14px 18px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.4px; }
+        .table-custom td { border-bottom: 1px solid rgba(255,255,255,0.04); padding: 14px 18px; vertical-align: middle; }
+        .table-custom tr:last-child td { border-bottom: none; }
+        .table-custom tbody tr { transition: background 0.15s; }
+        .table-custom tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        .book-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+        .book-row + .book-row { border-top: 1px dashed rgba(255,255,255,0.05); margin-top: 5px; }
+        .book-img { width: 34px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0; filter: grayscale(0.3); }
+        .book-title-link { font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; display: block; }
+        .book-title-link:hover { color: var(--primary-light); }
+        .btn-reborrow { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; padding: 3px 8px; background: rgba(99,102,241,0.12); color: var(--primary-light); border: 1px solid rgba(99,102,241,0.25); border-radius: 6px; text-decoration: none; margin-top: 4px; transition: all 0.2s; }
+        .btn-reborrow:hover { background: rgba(99,102,241,0.25); color: #fff; }
+
+        .multi-badge { display: inline-block; font-size: 0.68rem; font-weight: 700; background: rgba(71,85,105,0.3); color: var(--text-secondary); border: 1px solid var(--border); padding: 2px 7px; border-radius: 5px; margin-bottom: 6px; }
+
+        .status-badge { padding: 5px 11px; border-radius: 7px; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px; }
+        .status-returned { color: #94a3b8; border: 1px solid #475569; background: rgba(71,85,105,0.2); }
+        .status-cancelled { color: #f87171; border: 1px solid rgba(239,68,68,0.4); background: rgba(239,68,68,0.1); }
+
+        .empty-state { text-align: center; padding: 3.5rem 2rem; }
+        .empty-state i { font-size: 3.5rem; color: rgba(255,255,255,0.06); margin-bottom: 1rem; display: block; }
+        .empty-state h4 { color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem; }
+        .empty-state p { color: var(--text-secondary); opacity: 0.6; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="page-layout">
+
+<!-- USER SIDEBAR -->
+<aside class="user-sidebar">
+    <a class="sidebar-brand" href="/dashboard">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">SchoolLib</span><span class="brand-sub">Thư Viện Số</span></div>
+    </a>
+    <div class="sidebar-user-info" th:if="${#authentication.principal instanceof T(com.example.school_library_system.security.CustomUserDetails)}">
+        <div class="user-avatar"><i class="fas fa-user fa-sm"></i></div>
+        <div>
+            <div class="user-name-text" th:text="${#authentication.principal.user.fullName}">Độc giả</div>
+            <div class="user-role-text">Độc Giả</div>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/dashboard" class="sidebar-link">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+        <div class="sidebar-cat-toggle" id="catToggle">
+            <span>Thể loại</span>
+            <i class="fas fa-chevron-down chevron"></i>
+        </div>
+        <div class="sidebar-cat-menu" id="catMenu">
+            <a href="/dashboard">Tất cả sách</a>
+            <a th:each="cat : ${allCategories}"
+               th:href="@{/dashboard(categoryId=${cat.categoryId})}"
+               th:text="${cat.categoryName}">Thể loại</a>
+        </div>
+        <div class="sidebar-divider"></div>
+        <a href="/phieu-dat-cho" class="sidebar-link"><span>Phiếu Đặt Chỗ</span></a>
+        <a href="/dang-muon" class="sidebar-link"><span>Đang Mượn</span></a>
+        <a href="/lich-su-muon" class="sidebar-link active"><span>Lịch Sử Mượn</span></a>
+        <a href="/lich-su-phat" class="sidebar-link warn"><span>Vi Phạm &amp; Phạt</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout">
+                <i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="user-main">
+<div class="content-wrapper">
+
+    <div class="page-header">
+        <h1><i class="fas fa-history"></i> Lịch Sử Mượn Sách</h1>
+        <p>Toàn bộ phiếu mượn đã hoàn tất (đã trả sách) hoặc bị hủy. Bạn có thể mượn lại bất kỳ cuốn sách nào từ lịch sử.</p>
+    </div>
+
+    <div class="custom-card">
+        <!-- Empty -->
+        <div th:if="${historyRecords.isEmpty()}" class="empty-state">
+            <i class="fas fa-box"></i>
+            <h4>Chưa có lịch sử</h4>
+            <p>Bạn chưa hoàn tất phiếu mượn nào.</p>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive" th:if="${!historyRecords.isEmpty()}">
+            <table class="table table-custom">
+                <thead>
+                    <tr>
+                        <th width="10%">Mã Phiếu</th>
+                        <th width="50%">Sách đã mượn</th>
+                        <th width="22%">Thời gian mượn</th>
+                        <th width="18%">Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="record : ${historyRecords}">
+                        <td>
+                            <span class="fw-bold text-secondary" th:text="'#' + ${record.borrowId}"></span>
+                        </td>
+                        <td>
+                            <div th:if="${record.details.size() > 1}" class="multi-badge">
+                                <i class="fas fa-layer-group me-1"></i>
+                                <span th:text="${record.details.size()} + ' cuốn'"></span>
+                            </div>
+                            <div th:each="detail : ${record.details}" class="book-row">
+                                <img th:if="${detail.bookCopy.book.coverImage != null}"
+                                     th:src="${detail.bookCopy.book.coverImage}"
+                                     class="book-img" onerror="this.style.display='none'">
+                                <div>
+                                    <a th:href="@{'/book/' + ${detail.bookCopy.book.bookId}}"
+                                       class="book-title-link"
+                                       th:text="${detail.bookCopy.book.title}">Tên sách</a>
+                                    <a th:href="@{'/book/' + ${detail.bookCopy.book.bookId}}"
+                                       class="btn-reborrow">
+                                        <i class="fas fa-redo-alt"></i> Mượn lại
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary" style="font-size: 0.85rem;">
+                            <span th:if="${record.borrowDate != null}"
+                                  th:text="${#temporals.format(record.borrowDate, 'dd/MM/yyyy HH:mm')}"></span>
+                            <span th:if="${record.borrowDate == null}" class="text-muted">—</span>
+                        </td>
+                        <td>
+                            <span th:if="${record.recordStatus == 'Đã trả'}" class="status-badge status-returned">
+                                <i class="fas fa-check"></i> Đã trả sách
+                            </span>
+                            <span th:if="${record.recordStatus == 'Đã hủy'}" class="status-badge status-cancelled">
+                                <i class="fas fa-times"></i> Bị hủy
+                            </span>
+                            <span th:if="${record.recordStatus != 'Đã trả' and record.recordStatus != 'Đã hủy'}"
+                                  class="status-badge status-returned" th:text="${record.recordStatus}"></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div><!-- /user-main -->
+</div><!-- /page-layout -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function() {
+        const toggle = document.getElementById('catToggle');
+        const menu   = document.getElementById('catMenu');
+        if (toggle && menu) {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('open');
+                menu.classList.toggle('open');
+            });
+        }
+    })();
+</script>
+</body>
+</html>

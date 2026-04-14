@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thư Viện Trường Học</title>
+    <title>Thư Viện Trường Học — SchoolLib</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
     <style>
         :root {
             --primary: #6366f1;
@@ -28,41 +29,14 @@
             min-height: 100vh;
         }
 
-        /* ═══ NAVBAR ═══ */
-        .navbar-custom {
-            background: rgba(15,23,42,0.85);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            padding: 0.8rem 0;
-        }
-        .navbar-custom .navbar-brand {
-            font-weight: 800; font-size: 1.4rem;
-            background: linear-gradient(135deg, var(--primary-light), var(--accent));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .navbar-custom .navbar-brand i { -webkit-text-fill-color: var(--accent); margin-right: 8px; }
-        .nav-link-custom { color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: color 0.3s; margin-right: 1.5rem; cursor: pointer; }
-        .nav-link-custom:hover, .nav-link-custom.active { color: var(--primary-light); }
-        .custom-dropdown { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-top: 10px; }
-        .custom-dropdown .dropdown-item { color: var(--text-primary); transition: all 0.2s; padding: 8px 16px; font-size: 0.9rem; }
-        .custom-dropdown .dropdown-item:hover, .custom-dropdown .dropdown-item.active { background-color: rgba(99,102,241,0.2); color: var(--primary-light); }
-        .custom-dropdown .dropdown-divider { border-top-color: var(--border); }
-        .nav-user-info { display: flex; align-items: center; gap: 12px; }
-        .nav-user-info .user-name { color: var(--text-secondary); font-size: 0.9rem; }
-        .nav-user-info .user-name strong { color: var(--text-primary); }
-        .btn-logout {
-            background: rgba(239,68,68,0.15); color: #f87171;
-            border: 1px solid rgba(239,68,68,0.3); border-radius: 10px;
-            padding: 6px 16px; font-size: 0.85rem; font-weight: 500; transition: all 0.3s;
-        }
-        .btn-logout:hover { background: rgba(239,68,68,0.3); color: #fca5a5; transform: translateY(-1px); }
-
         /* ═══ HERO ═══ */
         .hero-section { padding: 2.5rem 0 0.5rem; text-align: center; }
         .hero-section h1 {
             font-size: 2.5rem; font-weight: 800;
             background: linear-gradient(135deg, #fff 0%, var(--primary-light) 50%, var(--accent) 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         .hero-section p { color: var(--text-secondary); font-size: 1.05rem; max-width: 500px; margin: 0.5rem auto 0; }
 
@@ -101,8 +75,8 @@
         .search-overlay-title { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
         .search-overlay-author { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
         .search-overlay-empty { padding: 16px; text-align: center; color: var(--text-secondary); font-size: 0.95rem; }
-        .search-overlay-more { 
-            display: block; padding: 12px; text-align: center; background: rgba(99,102,241,0.1); 
+        .search-overlay-more {
+            display: block; padding: 12px; text-align: center; background: rgba(99,102,241,0.1);
             color: var(--primary-light); font-weight: 500; text-decoration: none; transition: background 0.2s;
         }
         .search-overlay-more:hover { background: rgba(99,102,241,0.25); color: var(--primary-light); }
@@ -139,7 +113,7 @@
         .book-card-body { padding: 14px 16px 16px; }
         .book-card-body .book-title {
             font-size: 0.95rem; font-weight: 700; margin-bottom: 5px; line-height: 1.4;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+            display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
         .book-card-body .book-author { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 8px; }
         .book-card-body .book-author i { margin-right: 4px; color: var(--primary-light); }
@@ -169,6 +143,28 @@
         .empty-state h4 { color: var(--text-secondary); font-weight: 600; }
         .empty-state p { color: var(--text-secondary); opacity: 0.7; }
 
+        /* ═══ CATEGORY INFO ═══ */
+        .category-info-box {
+            background: linear-gradient(to right, rgba(99,102,241,0.08), rgba(99,102,241,0.03));
+            border-left: 4px solid var(--primary);
+            border-radius: 12px; padding: 1.25rem 1.5rem;
+            border: 1px solid rgba(99,102,241,0.2);
+            margin-bottom: 2rem; animation: fadeInUp 0.4s ease forwards;
+        }
+        .category-info-box h3 { font-weight: 800; font-size: 1.3rem; color: var(--text-primary); margin: 0; }
+        .category-info-box p { font-size: 0.95rem; line-height: 1.6; margin-top: 8px; color: var(--text-secondary); }
+
+        /* ═══ BORROWED BADGE ═══ */
+        .book-card-img .badge-borrowed {
+            position: absolute; top: 10px; left: 10px;
+            font-size: 0.68rem; font-weight: 700; padding: 4px 9px; border-radius: 8px;
+            backdrop-filter: blur(6px); letter-spacing: 0.3px;
+        }
+        .badge-reserved { background: rgba(245,158,11,0.85); border: 1px solid rgba(245,158,11,0.6); color: #fff; }
+        .badge-active { background: rgba(34,197,94,0.85); border: 1px solid rgba(34,197,94,0.6); color: #fff; }
+        .book-card.is-locked { opacity: 0.75; border-color: rgba(99,102,241,0.4); }
+        .book-card.is-locked:hover { border-color: rgba(99,102,241,0.6); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.4), 0 0 20px rgba(99,102,241,0.1); }
+
         /* ═══ ANIMATION ═══ */
         @keyframes fadeInUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
         .book-card { animation: fadeInUp 0.45s ease forwards; opacity: 0; }
@@ -180,44 +176,58 @@
 </head>
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar navbar-custom sticky-top">
-    <div class="container d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-            <a class="navbar-brand" href="/dashboard"><i class="fas fa-book-open"></i>SchoolLib</a>
-            <div class="ms-4 d-flex align-items-center">
-                <a href="/dashboard" class="nav-link-custom" th:classappend="${currentCategoryId == null} ? 'active'"><i class="fas fa-home me-1"></i> Trang chủ</a>
-                
-                <!-- Category Dropdown -->
-                <div class="dropdown me-4">
-                    <a class="nav-link-custom dropdown-toggle" href="#" role="button" id="catDropdown" data-bs-toggle="dropdown" aria-expanded="false" th:classappend="${currentCategoryId != null} ? 'active'">
-                        <i class="fas fa-tags me-1"></i> Thể loại
-                    </a>
-                    <ul class="dropdown-menu custom-dropdown" aria-labelledby="catDropdown">
-                        <li><a class="dropdown-item" href="/dashboard" th:classappend="${currentCategoryId == null} ? 'active'">Tất cả sách</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li th:each="cat : ${allCategories}">
-                            <a class="dropdown-item" th:href="@{/dashboard(categoryId=${cat.categoryId})}"
-                               th:text="${cat.categoryName}"
-                               th:classappend="${currentCategoryId == cat.categoryId} ? 'active'">Tên thể loại</a>
-                        </li>
-                    </ul>
-                </div>
+<div class="page-layout">
 
-                <a href="/my-books" class="nav-link-custom" style="margin-right: 0;"><i class="fas fa-bookmark me-1"></i> Sách của tôi</a>
-            </div>
-        </div>
-        <div class="nav-user-info">
-            <span class="user-name" th:if="${#authentication.principal instanceof T(com.example.school_library_system.security.CustomUserDetails)}">
-                <i class="fas fa-user-circle me-1"></i>
-                Xin chào, <strong th:text="${#authentication.principal.user.fullName}">User</strong>
-            </span>
-            <form th:action="@{/logout}" method="post" style="display:inline;">
-                <button type="submit" class="btn btn-logout"><i class="fas fa-sign-out-alt me-1"></i> Đăng xuất</button>
-            </form>
+<!-- USER SIDEBAR -->
+<aside class="user-sidebar">
+    <a class="sidebar-brand" href="/dashboard">
+        <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+        <div><span class="brand-text">SchoolLib</span><span class="brand-sub">Thư Viện Số</span></div>
+    </a>
+    <div class="sidebar-user-info" th:if="${#authentication.principal instanceof T(com.example.school_library_system.security.CustomUserDetails)}">
+        <div class="user-avatar"><i class="fas fa-user fa-sm"></i></div>
+        <div>
+            <div class="user-name-text" th:text="${#authentication.principal.user.fullName}">Độc giả</div>
+            <div class="user-role-text">Độc Giả</div>
         </div>
     </div>
-</nav>
+    <nav class="sidebar-nav">
+        <a href="/dashboard" class="sidebar-link active" th:classappend="${currentCategoryId == null} ? 'active' : ''">
+            <span class="home-icon"><i class="fas fa-home"></i></span>
+            <span>Trang chủ</span>
+        </a>
+
+        <!-- Thể loại accordion -->
+        <div class="sidebar-cat-toggle" id="catToggle" th:classappend="${currentCategoryId != null} ? 'open' : ''">
+            <span>Thể loại</span>
+            <i class="fas fa-chevron-down chevron"></i>
+        </div>
+        <div class="sidebar-cat-menu" id="catMenu" th:classappend="${currentCategoryId != null} ? 'open' : ''">
+            <a href="/dashboard" th:classappend="${currentCategoryId == null} ? 'active' : ''">Tất cả sách</a>
+            <a th:each="cat : ${allCategories}"
+               th:href="@{/dashboard(categoryId=${cat.categoryId})}"
+               th:text="${cat.categoryName}"
+               th:classappend="${currentCategoryId == cat.categoryId} ? 'active' : ''">Thể loại</a>
+        </div>
+
+        <div class="sidebar-divider"></div>
+        <a href="/phieu-dat-cho" class="sidebar-link"><span>Phiếu Đặt Chỗ</span></a>
+        <a href="/dang-muon" class="sidebar-link"><span>Đang Mượn</span></a>
+        <a href="/lich-su-muon" class="sidebar-link"><span>Lịch Sử Mượn</span></a>
+        <a href="/lich-su-phat" class="sidebar-link warn"><span>Vi Phạm &amp; Phạt</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="sidebar-logout">
+                <i class="fas fa-sign-out-alt"></i><span>Đăng Xuất</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="user-main">
 
 <!-- HERO -->
 <div class="hero-section">
@@ -241,15 +251,32 @@
     </div>
 </div>
 
+<!-- CATEGORY INFO -->
+<div class="container" th:if="${currentCategory != null}">
+    <div class="category-info-box">
+        <h3><i class="fas fa-bookmark text-primary me-2"></i>Sách thể loại: <span class="text-primary" th:text="${currentCategory.categoryName}">Tên thể loại</span></h3>
+        <p class="mb-0" th:if="${currentCategory.description != null && !currentCategory.description.isEmpty()}" th:text="${currentCategory.description}">Mô tả thể loại</p>
+        <p class="mb-0 fst-italic text-muted" th:if="${currentCategory.description == null || currentCategory.description.isEmpty()}">Chưa có thông tin mô tả cho thể loại này.</p>
+    </div>
+</div>
+
 <!-- BOOK GRID -->
 <div class="container" id="bookContainer">
     <div class="book-grid" th:if="${!bookPage.isEmpty()}">
-        <a class="book-card" th:each="book : ${bookPage.content}" th:href="@{'/book/' + ${book.bookId}}">
+        <a class="book-card" th:each="book : ${bookPage.content}"
+           th:href="@{'/book/' + ${book.bookId}}"
+           th:classappend="${activeBorrowedBookIds != null && activeBorrowedBookIds.contains(book.bookId)} ? ' is-locked' : ''">
             <div class="book-card-img">
                 <img th:if="${book.coverImage != null && !book.coverImage.isEmpty()}" th:src="${book.coverImage}" alt="Bìa sách">
                 <div th:if="${book.coverImage == null || book.coverImage.isEmpty()}" class="no-image"><i class="fas fa-book"></i></div>
-                <span class="badge-copies" th:if="${book.copies != null}">
-                    <i class="fas fa-layer-group me-1"></i><span th:text="${book.copies.size()}">0</span> bản
+                <span class="badge-copies"
+                      th:with="usable=${book.copies != null ? book.copies.?[physicalStatus == 'Sẵn sàng'] : {}}"
+                      th:if="${usable != null and usable.size() > 0}">
+                    <i class="fas fa-layer-group me-1"></i><span th:text="${usable.size()}">0</span> bản
+                </span>
+                <span th:if="${activeBorrowedBookIds != null && activeBorrowedBookIds.contains(book.bookId)}"
+                      class="badge-borrowed badge-reserved">
+                    <i class="fas fa-clock me-1"></i>Đã đặt
                 </span>
             </div>
             <div class="book-card-body">
@@ -291,25 +318,39 @@
     </div>
 </div>
 
+</div><!-- /user-main -->
+</div><!-- /page-layout -->
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// ── Category accordion ──
 (function() {
-    const input = document.getElementById('searchInput');
-    const spinner = document.getElementById('searchSpinner');
+    const toggle = document.getElementById('catToggle');
+    const menu   = document.getElementById('catMenu');
+    if (toggle && menu) {
+        toggle.addEventListener('click', () => {
+            toggle.classList.toggle('open');
+            menu.classList.toggle('open');
+        });
+    }
+})();
+
+// ── Live Search ──
+(function() {
+    const input    = document.getElementById('searchInput');
+    const spinner  = document.getElementById('searchSpinner');
     const dropdown = document.getElementById('searchDropdown');
     let timer;
 
     const urlParams = new URLSearchParams(window.location.search);
     const catId = urlParams.get('categoryId');
 
-    // Click outside để đóng dropdown
     document.addEventListener('click', (e) => {
         if (!input.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.remove('show');
         }
     });
 
-    // Hiện dropdown nếu bấm lại vào input mà đã có dữ liệu
     input.addEventListener('focus', () => {
         if (input.value.trim().length > 0 && dropdown.innerHTML.trim() !== '') {
             dropdown.classList.add('show');
@@ -319,7 +360,7 @@
     input.addEventListener('input', function() {
         clearTimeout(timer);
         const keyword = input.value.trim();
-        
+
         if (keyword.length === 0) {
             dropdown.classList.remove('show');
             spinner.classList.remove('active');
@@ -328,7 +369,7 @@
 
         spinner.classList.add('active');
         dropdown.classList.add('show');
-        
+
         timer = setTimeout(() => {
             let apiURL = '/api/books/search?keyword=' + encodeURIComponent(keyword);
             if (catId) apiURL += '&categoryId=' + catId;
@@ -338,7 +379,7 @@
                 .then(data => {
                     spinner.classList.remove('active');
                     dropdown.innerHTML = '';
-                    
+
                     if (data.length === 0) {
                         dropdown.innerHTML = '<div class="search-overlay-empty">Không tìm thấy kết quả nào cho "' + keyword + '"</div>';
                         return;
@@ -348,7 +389,7 @@
                         const noImg = '<div style="width:40px;height:56px;background:var(--bg-surface);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:12px;border-radius:4px;"><i class="fas fa-book"></i></div>';
                         const imgSrc = book.coverImage ? '<img src="' + book.coverImage + '" class="search-overlay-img">' : noImg;
                         const author = book.author ? '<div class="search-overlay-author"><i class="fas fa-pen-nib me-1"></i>' + book.author + '</div>' : '';
-                        
+
                         dropdown.innerHTML += `
                             <a href="/book/${book.bookId}" class="search-overlay-item">
                                 ${imgSrc}
@@ -360,7 +401,6 @@
                         `;
                     });
 
-                    // Xem tất cả kết quả
                     let searchUrl = '/dashboard?keyword=' + encodeURIComponent(keyword) + '&page=0';
                     if (catId) searchUrl += '&categoryId=' + catId;
                     dropdown.innerHTML += '<a href="' + searchUrl + '" class="search-overlay-more">Xem tất cả kết quả <i class="fas fa-arrow-right ms-1"></i></a>';
@@ -372,7 +412,6 @@
         }, 350);
     });
 
-    // Bấm Enter để chuyển thẳng sang xem chế độ Grid
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -382,7 +421,6 @@
         }
     });
 
-    // Move cursor to end
     const v = input.value; input.value = ''; input.value = v;
 })();
 </script>

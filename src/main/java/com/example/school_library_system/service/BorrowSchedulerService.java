@@ -75,9 +75,10 @@ public class BorrowSchedulerService {
                 
                 if (record.getDetails() != null) {
                     for (BorrowDetail detail : record.getDetails()) {
-                        if (detail.getBookCopy() != null) {
-                            detail.getBookCopy().setPhysicalStatus("S\u1eb5n s\u00e0ng");
-                            bookCopyRepository.save(detail.getBookCopy());
+                        var bookCopy = detail.getBookCopy();
+                        if (bookCopy != null) {
+                            bookCopy.setPhysicalStatus("Sẵn sàng");
+                            bookCopyRepository.save(bookCopy);
                         }
                     }
                 }

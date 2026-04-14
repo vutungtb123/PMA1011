@@ -3,10 +3,13 @@ package com.example.school_library_system.controller;
 import com.example.school_library_system.dto.ForgotPasswordDto;
 import com.example.school_library_system.dto.OtpVerifyDto;
 import com.example.school_library_system.dto.ResetPasswordDto;
+import com.example.school_library_system.entity.User;
+import com.example.school_library_system.repository.UserRepository;
 import com.example.school_library_system.service.AuthService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,19 +17,32 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Slf4j
 @Controller
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     // =========================================================
     // LOGIN
     // =========================================================
 
     @GetMapping("/login")
-    public String showLoginPage() {
+    public String showLoginPage(Model model) {
+        // Lấy 1 admin và 2 reader để hiển thị quick-fill trên trang login
+        List<User> admins = userRepository.findByRole("ROLE_ADMIN", PageRequest.of(0, 1));
+        List<User> readers = userRepository.findByRole("ROLE_USER", PageRequest.of(0, 2));
+
+        List<User> demoAccounts = new ArrayList<>();
+        demoAccounts.addAll(admins);
+        demoAccounts.addAll(readers);
+
+        model.addAttribute("demoAccounts", demoAccounts);
         return "login";
     }
 
